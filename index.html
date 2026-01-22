@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Writersplaza Editor</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' ry='12' fill='%23212529'/%3E%3Cpath d='M20 46l24-28-2-2-24 28-2 10 10-2z' fill='%23f4c430'/%3E%3Cpath d='M30 38l12-14-2-2-12 14z' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Quicksand:wght@300;400;500;600;700&family=PT+Sans:wght@400;700&family=Baloo+2:wght@400;500;600;700&family=Short+Stack&family=Courier+Prime:wght@400;700&family=Libre+Baskerville:wght@400;700&family=Crimson+Pro:wght@400;700&family=Lexend:wght@100;200;300;400;500;600;700;800;900&family=Comic+Neue:wght@300;400;700&family=JetBrains+Mono:wght@100;200;300;400;500;600;700;800&family=Source+Code+Pro:wght@200;300;400;500;600;700;800;900&family=Vollkorn:wght@400;500;600;700;800;900&family=Nunito:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Font Awesome CDN to ensure icons load even if CSS @import is blocked/cached -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" 
+        integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" 
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="./styles.css?v=119">
+  <script src="./backup-manager.js"></script>
+  <script>
+    // Early, resilient fallback: if FA doesn't render, show text labels
+    (function(){
+      function markFallback(){
+        document.documentElement.classList.add('fa-ready');
+        document.body && document.body.classList.add('fa-fallback');
+      }
+      function checkFA(){
+        try {
+          var probe = document.createElement('i');
+          probe.className = 'fas fa-bold';
+          probe.style.cssText = 'position:absolute;visibility:hidden;left:-9999px;';
+          document.body.appendChild(probe);
+          var width = probe.getBoundingClientRect().width;
+          var family = getComputedStyle(probe).fontFamily || '';
+          probe.remove();
+          if (!width || family.toLowerCase().indexOf('font awesome') === -1) {
+            markFallback();
+          }
+        } catch(e){ markFallback(); }
+      }
+      // Run after DOM is interactive and again after a short delay
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function(){ setTimeout(checkFA, 300); });
+      } else {
+        setTimeout(checkFA, 300);
+      }
+      // Final safety check a bit later for slow networks
+      setTimeout(function(){
+        if (!document.documentElement.classList.contains('fa-ready')) { markFallback(); }
+      }, 2000);
+    })();
+  </script>
+</head>
+<body>
+  <!-- Skip to main content for accessibility -->
+  <a href="#main-content" class="skip-link" style="position: absolute; top: -40px; left: 6px; background: #1A120B; color: white; padding: 8px; text-decoration: none; border-radius: 4px; z-index: 10000; transition: top 0.3s;">Skip to main content</a>
+  
+  <button class="fullscreen-exit-btn" data-action="toggleFullscreen" data-param="true" aria-label="Exit fullscreen mode"><i class="fas fa-compress" aria-hidden="true"></i> Exit Fullscreen</button>
+  <div class="app-wrapper">
+    <!-- Autosave Indicator -->
+    <div class="autosave-indicator" id="autosaveIndicator">
+      <i class="fas fa-save"></i>
+      <span id="autosaveText">Autosaved</span>
+    </div>
+    
+    <!-- Read Mode Exit Button -->
+    <button class="page-view-exit-btn" data-action="togglePageView" aria-label="Exit read mode">
+      <i class="fas fa-times" aria-hidden="true"></i> Exit Read Mode
+    </button>
+    
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+          <img src="Image 2.svg" alt="Logo" style="height: 32px; margin-top: 2px; background: white; padding: 4px; border-radius: 6px; border: 2px solid #D4AF37; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="display: flex; flex-direction: column; line-height: 1.2; text-align: center; align-items: center;">
+            <h1 style="margin: 0; padding: 0; font-size: 1.1em; font-weight: bold; font-family: 'Marko One', serif; letter-spacing: 0.5px;"><strong>Writersplaza</strong></h1>
+            <span style="font-size: 1.1em; color: #1A120B; margin-top: -2px; font-weight: bold; font-family: 'Marko One', serif; letter-spacing: 0.5px;"><strong>Editor</strong></span>
+          </div>
+        </div>
+        <div class="header-actions" style="margin-right: -12px;">
+          <button class="header-btn" data-action="toggleSidebar" aria-label="Toggle sidebar visibility"> <i class="fas fa-bars" aria-hidden="true"></i> Hide Sidebar </button>
+          <button class="header-btn" id="pageViewBtn" data-action="togglePageView" aria-label="Toggle read mode"> <i class="fas fa-file-alt" aria-hidden="true"></i> Read Mode </button>
+          <button class="header-btn" data-action="addNewPage" aria-label="Add new page"> <i class="fas fa-file-medical" aria-hidden="true"></i> Add Page </button>
+          <button class="header-btn" data-action="toggleDarkMode" aria-label="Toggle dark mode"> <i class="fas fa-moon" aria-hidden="true"></i> Dark </button>
+          <button class="header-btn" data-action="toggleFocusMode" aria-label="Toggle focus mode"> <i class="fas fa-eye" aria-hidden="true"></i> Focus </button>
+          <button class="header-btn" data-action="openVersionHistory" aria-label="Open version history"> <i class="fas fa-history" aria-hidden="true"></i> History </button>
+          <button class="header-btn" data-action="openExport" aria-label="Export document"> <i class="fas fa-download" aria-hidden="true"></i> Export </button>
+          <button class="header-btn" data-action="saveAll" aria-label="Save all changes"> <i class="fas fa-save" aria-hidden="true"></i> Save </button>
+          <button class="header-btn" data-action="openKeyboardShortcuts" title="Keyboard Shortcuts (Ctrl+/)" aria-label="Open keyboard shortcuts"> <i class="fas fa-keyboard" aria-hidden="true"></i> Shortcuts </button>
+          <div class="more-dropdown-container" style="position: relative; display: inline-block;">
+            <button class="header-btn" data-action="toggleMoreDropdown" aria-label="Collaboration options" aria-haspopup="true" aria-expanded="false"> <i class="fas fa-ellipsis-v" aria-hidden="true"></i> Collaboration <i class="fas fa-caret-down" aria-hidden="true" style="font-size: 10px; margin-left: 4px;"></i> </button>
+            <div id="moreDropdown" class="more-dropdown" style="display: none;">
+              <button class="more-dropdown-item" data-action="toggleReviewMode" aria-label="Toggle review mode"> <i class="fas fa-comments" aria-hidden="true"></i> Review </button>
+              <button class="more-dropdown-item" data-action="openShareLink" aria-label="Create share link"> <i class="fas fa-share-alt" aria-hidden="true"></i> Share </button>
+              <button class="more-dropdown-item" data-action="addInlineComment" aria-label="Add comment"> <i class="fas fa-comment" aria-hidden="true"></i> Comment </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab active" data-action="switchSidebarTab" data-param="chapters">Chapters</button>
+          <button class="sidebar-tab" data-action="switchSidebarTab" data-param="research">Research</button>
+          <button class="sidebar-tab" data-action="switchSidebarTab" data-param="story">Story Board</button>
+          <button class="sidebar-tab" data-action="switchSidebarTab" data-param="stats">Statistics</button>
+        </div>
+
+        <!-- Chapters Tab -->
+        <div class="sidebar-content" id="chaptersTab">
+          <div class="sidebar-section">
+            <h3>Template</h3>
+            <select id="templateSelector" data-action="switchTemplate" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; font-size: 14px; font-weight: 600; background: white; cursor: pointer;">
+              <option value="novel">📖 Novel</option>
+              <option value="screenplay">🎬 Screenplay</option>
+              <option value="playwriting">🎭 Playwriting</option>
+            </select>
+          </div>
+          <div class="sidebar-section">
+            <h3>Templates Library</h3>
+            <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
+              <i class="fas fa-info-circle"></i> Insert pre-written templates
+            </div>
+            <button class="add-chapter-btn" onclick="openTemplatesLibrary()" style="background: #8B4513;">
+              <i class="fas fa-layer-group"></i> Browse Templates
+            </button>
+          </div>
+          <div class="sidebar-section">
+            <h3>Scene Navigator</h3>
+            <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
+              <i class="fas fa-info-circle"></i> Quick jump to chapters and scenes
+            </div>
+            <div id="sceneNavigator" style="max-height: 300px; overflow-y: auto; background: rgba(255,255,255,0.9); border: 1px solid #dee2e6; border-radius: 6px; padding: 8px;">
+              <div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">
+                <i class="fas fa-map-signs"></i><br>
+                Start writing to see navigation
+              </div>
+            </div>
+            <button class="add-chapter-btn" onclick="refreshSceneNavigator()" style="margin-top: 8px; background: #8B4513;">
+              <i class="fas fa-sync"></i> Refresh Navigation
+            </button>
+          </div>
+          <div class="sidebar-section" id="novelControls">
+            <h3>Chapters</h3>
+            <div id="chapterList"></div>
+            <button class="add-chapter-btn" data-action="addChapter"> <i class="fas fa-plus"></i> Add Chapter </button>
+          </div>
+          <div class="sidebar-section">
+            <h3>Project Manager</h3>
+            <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
+              <i class="fas fa-info-circle"></i> Manage multiple writing projects
+            </div>
+            <button class="add-chapter-btn" onclick="openModal('projectManagerModal')" style="background: #8B4513;">
+              <i class="fas fa-folder-open"></i> Open Project Manager
+            </button>
+          </div>
+          <div class="sidebar-section" id="screenplayControls" style="display: none;">
+            <h3>Screenplay Elements</h3>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="titlepage" style="margin-bottom: 8px; background: #28a745;"><i class="fas fa-file-alt"></i> Title Page</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="outline" style="margin-bottom: 8px; background: #17a2b8;"><i class="fas fa-list"></i> Scene Outline</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="scene" style="margin-bottom: 8px;"><i class="fas fa-video"></i> Scene Heading</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="general" style="margin-bottom: 8px;"><i class="fas fa-align-left"></i> General</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="character" style="margin-bottom: 8px;"><i class="fas fa-user"></i> Character</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="dialogue" style="margin-bottom: 8px;"><i class="fas fa-comment"></i> Dialogue</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="parenthetical" style="margin-bottom: 8px;"><i class="fas fa-info-circle"></i> Parenthetical</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="action" style="margin-bottom: 8px;"><i class="fas fa-bolt"></i> Action</button>
+            <button class="add-chapter-btn" data-action="insertScreenplayElement" data-param="transition" style="background: #6c757d;"><i class="fas fa-arrow-right"></i> Transition</button>
+            <div class="checkbox-group" style="margin-top: 12px; padding: 10px; background: rgba(139,69,19,0.3); border-radius: 6px;">
+              <input type="checkbox" id="sceneNumbering" data-action="toggleSceneNumbering">
+              <label for="sceneNumbering" style="margin: 0; font-size: 13px;">Scene Numbering</label>
+            </div>
+            <div class="checkbox-group" style="margin-top: 8px; padding: 10px; background: rgba(139,69,19,0.3); border-radius: 6px;">
+              <input type="checkbox" id="removeSceneNumbering" data-action="removeSceneNumbering">
+              <label for="removeSceneNumbering" style="margin: 0; font-size: 13px;">Remove Scene Numbering</label>
+            </div>
+          </div>
+          <div class="sidebar-section" id="playwritingControls" style="display: none;">
+            <h3>Playwriting Elements</h3>
+            <button class="add-chapter-btn" data-action="insertPlaywritingElement" data-param="act" style="margin-bottom: 8px;"><i class="fas fa-theater-masks"></i> Act Heading</button>
+            <button class="add-chapter-btn" data-action="insertPlaywritingElement" data-param="scene" style="margin-bottom: 8px;"><i class="fas fa-map-marker-alt"></i> Scene Heading</button>
+            <button class="add-chapter-btn" data-action="insertPlaywritingElement" data-param="character" style="margin-bottom: 8px;"><i class="fas fa-user"></i> Character Tag</button>
+            <button class="add-chapter-btn" data-action="insertPlaywritingElement" data-param="stage" style="background: #6c757d;"><i class="fas fa-directions"></i> Stage Direction</button>
+          </div>
+          <div class="sidebar-section">
+            <h3>Writing Goals</h3>
+            <div class="form-group"><label>Daily Word Goal</label> <input type="number" id="dailyGoal" value="1000" min="0" data-action="updateGoals" style="background: rgba(139,69,19,0.3);"></div>
+            <div class="stat-item"><span style="font-weight: 700; color: #000;">Today's Words:</span> <strong id="todaysWords" style="font-weight: 600;">0</strong> <span style="font-weight: 600;">/</span> <strong id="goalTarget" style="font-weight: 600;">1000</strong></div>
+            <div style="margin: 8px 0;">
+              <div style="background: #e9ecef; border-radius: 10px; height: 20px; overflow: hidden; position: relative;">
+                <div id="goalProgressBar" style="background: linear-gradient(90deg, #8B4513 0%, #A0522D 100%); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+            <div class="stat-item"><span style="font-weight: 700; color: #000;">Progress:</span> <strong id="goalProgress">0%</strong></div>
+          </div>
+          <div class="sidebar-section">
+            <h3>Writing Streak</h3>
+            <div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%); border-radius: 8px; color: white; margin-bottom: 12px;">
+              <div style="font-size: 36px; font-weight: bold; margin-bottom: 5px;">
+                <i class="fas fa-fire"></i> <span id="streakDays">0</span>
+              </div>
+              <div style="font-size: 13px; opacity: 0.9;">Day Streak</div>
+            </div>
+            <div class="stat-item"><span style="font-weight: 700; color: #000;">Last Write:</span> <span id="lastWriteDate">Never</span></div>
+            <div class="stat-item"><span style="font-weight: 700; color: #000;">Longest Streak:</span> <strong id="longestStreak" style="font-weight: 600;">0 days</strong></div>
+          </div>
+          <div class="sidebar-section" id="novelMatterControls">
+            <h3>Front / Back Matter</h3>
+            <button class="add-chapter-btn" data-action="insertFrontMatter" style="margin-bottom: 6px;"> <i class="fas fa-file-alt"></i> Insert Front Matter </button>
+            <button class="add-chapter-btn" data-action="insertBackMatter" style="background: #6c757d;"> <i class="fas fa-book"></i> Insert Back Matter </button>
+          </div>
+          <div class="sidebar-section">
+            <h3>Page Settings</h3>
+            <div class="form-group">
+              <label>Page Size</label>
+              <select id="pageSize" data-action="updatePageSettings" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #dee2e6; background: rgba(139,69,19,0.3);">
+                <option value="letter">Letter (8.5" × 11")</option>
+                <option value="a4">A4 (210mm × 297mm)</option>
+                <option value="legal">Legal (8.5" × 14")</option>
+                <option value="a5">A5 (148mm × 210mm)</option>
+                <option value="executive">Executive (7.25" × 10.5")</option>
+                <option value="b5">B5 (176mm × 250mm)</option>
+                <option value="halfLetter">Half Letter (5.5" × 8.5")</option>
+                <option value="custom">Custom Size</option>
+              </select>
+            </div>
+            <div id="customSizeSection" style="display: none; margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                <div>
+                  <label style="font-size: 12px; color: #666;">Width</label>
+                  <input type="text" id="customWidth" value="8.5in" placeholder="e.g., 8.5in" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: #666;">Height</label>
+                  <input type="text" id="customHeight" value="11in" placeholder="e.g., 11in" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+              </div>
+              <button data-action="applyCustomPageSize" style="width: 100%; padding: 8px; background: #8B4513; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-check"></i> Apply Custom Size
+              </button>
+            </div>
+            <div class="form-group">
+              <label>Margin Preset</label>
+              <select id="marginPreset" data-action="updateMarginPreset" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #dee2e6; background: rgba(139,69,19,0.3);">
+                <option value="normal">Normal (1 inch)</option>
+                <option value="narrow">Narrow (0.5 inch)</option>
+                <option value="moderate">Moderate (0.75 inch)</option>
+                <option value="wide">Wide (1.5 inches)</option>
+                <option value="manuscript">Manuscript (1.25 inches)</option>
+                <option value="custom">Custom Margins</option>
+              </select>
+            </div>
+            <div id="customMarginSection" style="display: none; margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div>
+                  <label style="font-size: 12px; color: #666;">Top</label>
+                  <input type="text" id="marginTop" value="1in" placeholder="1in" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: #666;">Right</label>
+                  <input type="text" id="marginRight" value="1in" placeholder="1in" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: #666;">Bottom</label>
+                  <input type="text" id="marginBottom" value="1in" placeholder="1in" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: #666;">Left</label>
+                  <input type="text" id="marginLeft" value="1in" placeholder="1in" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+              </div>
+              <button data-action="updatePageSettings" style="margin-top: 8px; width: 100%; padding: 6px; background: #8B4513; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">Apply Custom</button>
+            </div>
+            <div class="form-group" style="margin-top: 16px;">
+              <label>Page Numbering</label>
+              <select id="pageNumberingDropdown" data-action="togglePageNumbering" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #dee2e6; background: rgba(139,69,19,0.3);">
+                <option value="none">None (No Numbering)</option>
+                <option value="enabled">Enable Numbering</option>
+              </select>
+            </div>
+            <div id="pageNumberSettings" style="display: none; margin: 10px 0; padding: 10px; background: rgba(139,69,19,0.1); border-radius: 6px;">
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Position</label>
+                <select id="pageNumberPosition" data-action="updatePageNumbering" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                  <option value="bottom-center">Bottom Center</option>
+                  <option value="bottom-right">Bottom Right</option>
+                  <option value="bottom-left">Bottom Left</option>
+                  <option value="top-center">Top Center</option>
+                  <option value="top-right">Top Right</option>
+                  <option value="top-left">Top Left</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Format</label>
+                <select id="pageNumberFormat" data-action="updatePageNumbering" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                  <option value="number">1, 2, 3...</option>
+                  <option value="dash">- 1 -, - 2 -...</option>
+                  <option value="page">Page 1, Page 2...</option>
+                  <option value="roman">i, ii, iii...</option>
+                  <option value="roman-upper">I, II, III...</option>
+                </select>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                <div>
+                  <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Start At</label>
+                  <input type="number" id="pageNumberStart" value="1" min="1" data-action="updatePageNumbering" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Font Size</label>
+                  <input type="text" id="pageNumberSize" value="11pt" data-action="updatePageNumbering" placeholder="11pt" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 13px; background: rgba(139,69,19,0.3);">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Research Tab -->
+        <div class="sidebar-content hidden" id="researchTab">
+          <div class="sidebar-section">
+            <h3>Research Notes</h3>
+            <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
+              <i class="fas fa-info-circle"></i> Store character notes, plot ideas, research links
+            </div>
+            <textarea id="researchNotes" placeholder="Your research notes, character details, plot ideas, world-building notes..."
+                      style="width: 100%; min-height: 300px; padding: 12px; border: 1px solid #dee2e6; border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.6; resize: vertical;"
+                      oninput="saveResearchNotes()"></textarea>
+            <div style="margin-top: 10px; font-size: 12px; color: #999; text-align: right;">
+              <i class="fas fa-save"></i> Auto-saved to browser
+            </div>
+          </div>
+          
+          <div class="sidebar-section">
+            <h3>Character Tracker</h3>
+            <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
+              <i class="fas fa-info-circle"></i> Track main characters and key figures
+            </div>
+            <div id="characterList" style="max-height: 200px; overflow-y: auto;">
+              <div style="text-align: center; color: #999; padding: 15px; font-size: 13px;">
+                <i class="fas fa-users"></i><br>
+                Add characters below
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <input type="text" id="newCharacterName" placeholder="Character name" 
+                     style="flex: 1; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px;"
+                     onkeypress="if(event.key==='Enter')addCharacter()">
+              <button onclick="addCharacter()" style="padding: 8px 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="sidebar-section">
+            <h3>Quick Links</h3>
+            <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
+              <i class="fas fa-info-circle"></i> Save research links and reference materials
+            </div>
+            <div id="quickLinks" style="max-height: 200px; overflow-y: auto;">
+              <div style="text-align: center; color: #999; padding: 15px; font-size: 13px;">
+                <i class="fas fa-link"></i><br>
+                Add research links below
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <input type="text" id="newLinkUrl" placeholder="https://..." 
+                     style="flex: 1; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px;"
+                     onkeypress="if(event.key==='Enter')addQuickLink()">
+              <button onclick="addQuickLink()" style="padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Story Board Tab -->
+        <div class="sidebar-content hidden" id="storyTab">
+          <div class="sidebar-section">
+            <h3>Story Plotting Board</h3>
+            <p style="font-size: 12px; color: #6c757d; margin-bottom: 10px;">Drag to reorder chapters</p>
+            <div class="story-board" id="storyBoard"></div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>3-Act Structure</h3>
+            <ul class="plot-list">
+              <li><strong>Act I · Setup:</strong> hook, world, stakes</li>
+              <li><strong>Act II · Confrontation:</strong> rising obstacles, midpoint shift</li>
+              <li><strong>Act III · Resolution:</strong> climax, fallout, new normal</li>
+            </ul>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>Hero's Journey (12)</h3>
+            <ol class="plot-list numbered">
+              <li>Ordinary World</li>
+              <li>Call to Adventure</li>
+              <li>Refusal</li>
+              <li>Mentor</li>
+              <li>Crossing the Threshold</li>
+              <li>Tests, Allies, Enemies</li>
+              <li>Approach to the Inmost Cave</li>
+              <li>Ordeal</li>
+              <li>Reward</li>
+              <li>The Road Back</li>
+              <li>Resurrection</li>
+              <li>Return with the Elixir</li>
+            </ol>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>Beat Sheet Markers</h3>
+            <div class="beat-chip" data-action="insertBeatMarker" data-param="★ Opening Image">★ Opening Image</div>
+            <div class="beat-chip" data-action="insertBeatMarker" data-param="★ Inciting Incident">★ Inciting Incident</div>
+            <div class="beat-chip" data-action="insertBeatMarker" data-param="★ Plot Point 1">★ Plot Point 1</div>
+            <div class="beat-chip" data-action="insertBeatMarker" data-param="★ Midpoint">★ Midpoint</div>
+            <div class="beat-chip" data-action="insertBeatMarker" data-param="★ Plot Point 2">★ Plot Point 2</div>
+            <div class="beat-chip" data-action="insertBeatMarker" data-param="★ Climax">★ Climax</div>
+            <div class="beat-chip" data-action="insertBeatMarker" data-param="★ Final Image">★ Final Image</div>
+            <p class="plot-hint">Click a marker to drop it into the current chapter.</p>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>Pacing & Tension</h3>
+            <div class="pacing-graph" id="pacingGraphContainer">
+              <svg viewBox="0 0 120 60" preserveAspectRatio="xMidYMid meet" id="pacingGraphSvg">
+                <defs>
+                  <linearGradient id="tensionGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#8ec5ff" />
+                    <stop offset="100%" stop-color="#7f5af0" />
+                  </linearGradient>
+                </defs>
+                <polyline id="tensionLine" points="0,50 15,40 30,45 45,30 60,20 75,18 90,10 105,6 120,5" fill="none" stroke="url(#tensionGrad)" stroke-width="3" stroke-linecap="round" />
+                <line x1="0" y1="50" x2="120" y2="50" stroke="#e0e0e0" stroke-width="1" />
+                <line x1="0" y1="5" x2="120" y2="5" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="2 2" />
+                <text x="2" y="57" font-size="7" fill="#666">Act I</text>
+                <text x="45" y="57" font-size="7" fill="#666">Act II</text>
+                <text x="92" y="57" font-size="7" fill="#666">Act III</text>
+                <g id="chapterMarkers"></g>
+              </svg>
+              <p class="plot-hint">Right-click storyboard cards to tag with acts. Chapters will appear on the graph.</p>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>Story Structure</h3>
+            <div id="storyStructureStats" style="font-size: 12px; color: #666; line-height: 1.8;">
+              <div>Tag chapters with acts to see structure analysis.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div class="sidebar-content hidden" id="statsTab">
+          <div class="sidebar-section">
+            <h3>Document Statistics</h3>
+            <div class="stat-item"><span>Total Words:</span> <strong id="totalWords">0</strong></div>
+            <div class="stat-item"><span>Total Chapters:</span> <strong id="totalChapters">0</strong></div>
+            <div class="stat-item"><span>Readability:</span> <strong id="readabilityScore">N/A</strong></div>
+            <div class="stat-item"><span>Avg Words/Chapter:</span> <strong id="avgWordsPerChapter">0</strong></div>
+          </div>
+          <div class="sidebar-section">
+            <h3>Word Frequency (Top 10)</h3>
+            <div id="wordFrequency"></div>
+          </div>
+          <div class="sidebar-section">
+            <h3>Outline View</h3>
+            <div id="outlineView"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Collapsable Toolbar Button (Right Side) -->
+      <button class="toolbar-toggle" data-action="toggleToolbarPanel">
+        <i class="fas fa-bars"></i>
+      </button>
+
+      <!-- Right Toolbar Panel -->
+      <div class="toolbar-panel" id="toolbarPanel" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 16px;">
+        
+        <!-- Row 1: B, /, U, S, Bullets, Numbers -->
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="bold" data-command="bold" title="Bold (Ctrl+B)">
+          <i class="fas fa-bold"></i> B
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="italic" data-command="italic" title="Italic (Ctrl+I)">
+          <i class="fas fa-italic"></i> /
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="underline" data-command="underline" title="Underline (Ctrl+U)">
+          <i class="fas fa-underline"></i> U
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="strikeThrough" data-command="strikeThrough" title="Strikethrough">
+          <i class="fas fa-strikethrough"></i> S
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="insertUnorderedList" data-command="insertUnorderedList" title="Bullet List">
+          <i class="fas fa-list-ul"></i> Bullets
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="insertOrderedList" data-command="insertOrderedList" title="Numbered List">
+          <i class="fas fa-list-ol"></i> Numbers
+        </button>
+
+        <!-- Row 2: Indent, Outdent, Alignments -->
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="indent" data-command="indent" title="Indent">
+          <i class="fas fa-indent"></i> Indent
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="outdent" data-command="outdent" title="Outdent">
+          <i class="fas fa-outdent"></i> Outdent
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="justifyLeft" data-command="justifyLeft" title="Align Left">
+          <i class="fas fa-align-left"></i> Left
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="justifyCenter" data-command="justifyCenter" title="Center">
+          <i class="fas fa-align-center"></i> Center
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="justifyRight" data-command="justifyRight" title="Align Right">
+          <i class="fas fa-align-right"></i> Right
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="justifyFull" data-command="justifyFull" title="Justify">
+          <i class="fas fa-align-justify"></i> Justify
+        </button>
+
+        <!-- Row 3: Undo, Redo, Clear, Case -->
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="undo" data-command="undo" title="Undo (Ctrl+Z)">
+          <i class="fas fa-undo"></i> Undo
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="redo" data-command="redo" title="Redo (Ctrl+Y)">
+          <i class="fas fa-redo"></i> Redo
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="removeFormat" data-command="removeFormat" title="Clear Formatting">
+          <i class="fas fa-eraser"></i> Clear Format
+        </button>
+        <button class="toolbar-panel-btn" data-action="transformCase" data-param="upper" title="Uppercase">
+          <i class="fas fa-arrow-up"></i> UPPERCASE
+        </button>
+        <button class="toolbar-panel-btn" data-action="transformCase" data-param="lower" title="Lowercase">
+          <i class="fas fa-arrow-down"></i> Lowercase
+        </button>
+        <button class="toolbar-panel-btn" data-action="transformCase" data-param="title" title="Title Case">
+          <i class="fas fa-heading"></i> Title Case
+        </button>
+
+        <!-- Row 4: Font Family, Font Size, Line Spacing, Letter Spacing -->
+        <select class="toolbar-panel-btn" id="fontFamilySelect" data-action="changeFontFamily" title="Font Family">
+              <option value="">Font</option>
+          <optgroup label="📘 NOVEL">
+              <option value="'Literata', serif">Literata</option>
+            <option value="'Merriweather', serif">Merriweather</option>
+            <option value="'Charter', serif">Charter</option>
+              <option value="'Source Serif 4', serif">Source Serif 4</option>
+              <option value="'Libre Baskerville', serif">Libre Baskerville</option>
+            <option value="'EB Garamond', serif">EB Garamond</option>
+              <option value="'Crimson Pro', serif">Crimson Pro</option>
+            <option value="'Vollkorn', serif">Vollkorn</option>
+          </optgroup>
+          <optgroup label="🎬 SCREENPLAY">
+            <option value="'Courier Prime', monospace">Courier Prime</option>
+            <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+            <option value="'Source Code Pro', monospace">Source Code Pro</option>
+            <option value="'Courier Prime Sans', monospace">Courier Prime Sans</option>
+          </optgroup>
+          <optgroup label="🎭 PLAYWRITING">
+            <option value="'Open Sans', sans-serif">Open Sans</option>
+            <option value="'Roboto', sans-serif">Roboto</option>
+            <option value="'Lato', sans-serif">Lato</option>
+            <option value="'Noto Sans', sans-serif">Noto Sans</option>
+            <option value="'Nunito', sans-serif">Nunito</option>
+          </optgroup>
+          <optgroup label="👶 CHILDREN">
+            <option value="'Andika', sans-serif">Andika</option>
+            <option value="'Lexend', sans-serif">Lexend</option>
+            <option value="'Comic Neue', sans-serif">Comic Neue</option>
+            <option value="'Baloo 2', sans-serif">Baloo 2</option>
+            <option value="'Quicksand', sans-serif">Quicksand</option>
+            <option value="'Atkinson Hyperlegible', sans-serif">Atkinson Hyperlegible</option>
+          </optgroup>
+            </select>
+        <div class="toolbar-panel-btn font-size-control" style="display: flex; align-items: center; gap: 0; padding: 0;">
+          <button class="size-btn" id="decreaseFontSizeBtn" title="Decrease font size" style="background: transparent; border: none; border-right: 1px solid #D4AF37; flex: 1; height: 100%; cursor: pointer; font-size: 18px; color: #000000; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">−</button>
+          <div class="size-display" id="fontSizeDisplay" style="flex: 1; text-align: center; font-size: 15px; color: #000000; font-weight: bold; white-space: nowrap;">12px</div>
+          <button class="size-btn" id="increaseFontSizeBtn" title="Increase font size" style="background: transparent; border: none; border-left: 1px solid #D4AF37; flex: 1; height: 100%; cursor: pointer; font-size: 18px; color: #000000; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">+</button>
+        </div>
+        <select class="toolbar-panel-btn" data-action="applyLineSpacing" title="Line Spacing">
+              <option value="">Line</option>
+              <option value="1.0">1.0</option>
+              <option value="1.5">1.5</option>
+              <option value="2.0">2.0</option>
+              <option value="2.5">2.5</option>
+              <option value="3.0">3.0</option>
+            </select>
+        <select class="toolbar-panel-btn" data-action="applyLetterSpacing" title="Letter Spacing">
+              <option value="">Letter</option>
+              <option value="0">Normal</option>
+              <option value="1">Expanded</option>
+              <option value="1.5">Expanded +</option>
+              <option value="2">Very Expanded</option>
+              <option value="-1">Condensed</option>
+              <option value="-2">Very Condensed</option>
+            </select>
+
+          <!-- Row 5: Writing & File Tools -->
+        <button class="toolbar-panel-btn" data-action="insertDialogue" title="Dialogue">
+          <i class="fas fa-comments"></i> Dialogue
+        </button>
+        <button class="toolbar-panel-btn" data-action="applyDropCap" title="Drop Cap">
+          <i class="fas fa-text-height"></i> DropCap
+        </button>
+        <button class="toolbar-panel-btn" data-action="spellCheck" title="Spell Check">
+          <i class="fas fa-spell-check"></i> Spell
+        </button>
+        <button class="toolbar-panel-btn" data-action="openFindReplace" title="Find & Replace">
+          <i class="fas fa-search"></i> Find
+        </button>
+        <button class="toolbar-panel-btn" data-action="saveAs" title="Save As">
+          <i class="fas fa-file-export"></i> SAVE AS
+        </button>
+        <button class="toolbar-panel-btn" data-action="aiProofread" title="AI Proofread">
+          <i class="fas fa-magic"></i> AI
+        </button>
+
+          <!-- Row 6: Insert & More Tools -->
+        <button class="toolbar-panel-btn" data-action="insertBlockquote" title="Quote">
+          <i class="fas fa-quote-right"></i> Quote
+        </button>
+        <button class="toolbar-panel-btn" data-action="insertHorizontalRule" title="Horizontal Line">
+          <i class="fas fa-minus"></i> Line
+        </button>
+        <button class="toolbar-panel-btn" data-action="insertTable" title="Table">
+          <i class="fas fa-table"></i> Table
+        </button>
+        <button class="toolbar-panel-btn" data-action="insertChecklist" title="Checklist">
+          <i class="fas fa-tasks"></i> Checklist
+        </button>
+        <button class="toolbar-panel-btn" data-action="openEmbedModal" title="Embed">
+          <i class="fas fa-play-circle"></i> Embed
+        </button>
+        <button class="toolbar-panel-btn" data-action="toggleReadAloud" title="Read Aloud">
+          <i class="fas fa-volume-up"></i> Read
+        </button>
+
+        <!-- Row 7: Metadata, AI Settings, Super, Sub, Headings -->
+        <button class="toolbar-panel-btn" data-action="openMetadata" title="Metadata">
+          <i class="fas fa-info-circle"></i> Metadata
+        </button>
+        <button class="toolbar-panel-btn" data-action="openAISettings" title="AI Settings">
+          <i class="fas fa-cog"></i> AI Setting
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="superscript" title="Superscript">
+          <i class="fas fa-superscript"></i> Super
+        </button>
+        <button class="toolbar-panel-btn" data-action="formatText" data-param="subscript" title="Subscript">
+          <i class="fas fa-subscript"></i> Sub
+        </button>
+        <select class="toolbar-panel-btn" data-action="formatHeading" title="Headings" style="grid-column: span 2;">
+              <option value="">Heading</option>
+              <option value="h1">H1</option>
+              <option value="h2">H2</option>
+              <option value="h3">H3</option>
+              <option value="h4">H4</option>
+              <option value="h5">H5</option>
+              <option value="h6">H6</option>
+              <option value="p">Paragraph</option>
+            </select>
+
+        <!-- Row 8: Colors, Highlight, Page Break, Link, Image, Print -->
+        <input type="color" class="toolbar-panel-btn" id="textColor" value="#000000" data-action="changeTextColor" title="Text Color" style="cursor: pointer;">
+        <input type="color" class="toolbar-panel-btn" id="bgColor" value="#FFFFFF" data-action="changeBackgroundColor" title="Background Color" style="cursor: pointer;">
+        <button class="toolbar-panel-btn" data-action="toggleHighlightDropdown" title="Highlight">
+          <i class="fas fa-highlighter"></i> Highlight
+        </button>
+        <button class="toolbar-panel-btn" data-action="insertPageBreak" title="Page Break">
+          <i class="fas fa-file-medical"></i> Page Break
+        </button>
+        <button class="toolbar-panel-btn" data-action="insertLink" title="Insert Link">
+          <i class="fas fa-link"></i> Link
+        </button>
+        <button class="toolbar-panel-btn" data-action="insertImage" title="Insert Image">
+          <i class="fas fa-image"></i> Image
+        </button>
+        <button class="toolbar-panel-btn" data-action="printPreview" title="Print" style="grid-column: span 2;">
+          <i class="fas fa-print"></i> Print
+        </button>
+
+      </div>
+
+      <!-- Editor Container -->
+      <div class="editor-container">
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+          <div class="stat-item"><i class="fas fa-file-word"></i> <span>Words:</span> <strong id="wordCount">0</strong></div>
+          <div class="stat-item"><i class="fas fa-font"></i> <span>Characters:</span> <strong id="charCount">0</strong></div>
+          <div class="stat-item"><i class="fas fa-paragraph"></i> <span>Paragraphs:</span> <strong id="paragraphCount">0</strong></div>
+          <div class="stat-item"><i class="fas fa-clock"></i> <span>Read Time:</span> <strong id="readTime">0 min</strong></div>
+          <div class="stat-item"><i class="fas fa-save"></i> <span id="autosaveStatus">Autosaved</span></div>
+          <div class="stat-item" style="display: flex; align-items: center; gap: 2px;">
+            <button onclick="zoomOut()" title="Zoom Out" style="background: none; border: 1px solid #dee2e6; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 12px;"><i class="fas fa-search-minus"></i></button>
+            <span style="min-width: 40px; display: inline-block; text-align: center; font-size: 12px;"><strong id="zoomLevel">100%</strong></span>
+            <button onclick="zoomIn()" title="Zoom In" style="background: none; border: 1px solid #dee2e6; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 12px;"><i class="fas fa-search-plus"></i></button>
+          </div>
+        </div>
+
+        <!-- Editor Area -->
+        <div class="editor-area" id="editorArea">
+          <div class="page-wrapper" id="pageWrapper" id="main-content" role="main" aria-label="Document pages">
+            <div id="editor" class="editor-page" contenteditable="true" spellcheck="true" role="textbox" aria-label="Document editor" aria-multiline="true">
+              Start writing your manuscript here...
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Template Bar Toggle Button -->
+        <button class="bottom-bar-toggle" id="bottomBarToggle" onclick="toggleBottomTemplateBar()" title="Show Template Buttons">
+          <i class="fas fa-chevron-up"></i>
+        </button>
+
+        <!-- Bottom Template Bar (Hidden by default) -->
+        <div class="bottom-template-bar" id="bottomTemplateBar" style="display: none;">
+          <!-- Screenplay Buttons -->
+          <div id="bottomScreenplayButtons" style="display: none;">
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('titlepage')" title="Title Page"><i class="fas fa-file-alt"></i> Title Page</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('outline')" title="Scene Outline"><i class="fas fa-list"></i> Outline</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('scene')" title="Scene Heading"><i class="fas fa-video"></i> Scene</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('general')" title="General"><i class="fas fa-align-left"></i> General</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('character')" title="Character"><i class="fas fa-user"></i> Character</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('dialogue')" title="Dialogue"><i class="fas fa-comment"></i> Dialogue</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('parenthetical')" title="Parenthetical"><i class="fas fa-info-circle"></i> Parenthetical</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('action')" title="Action"><i class="fas fa-bolt"></i> Action</button>
+            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('transition')" title="Transition"><i class="fas fa-arrow-right"></i> Transition</button>
+          </div>
+          <!-- Playwriting Buttons -->
+          <div id="bottomPlaywritingButtons" style="display: none;">
+            <button class="template-bar-btn" onclick="insertPlaywritingElement('act')" title="Act Heading"><i class="fas fa-theater-masks"></i> Act</button>
+            <button class="template-bar-btn" onclick="insertPlaywritingElement('scene')" title="Scene Heading"><i class="fas fa-map-marker-alt"></i> Scene</button>
+            <button class="template-bar-btn" onclick="insertPlaywritingElement('character')" title="Character Tag"><i class="fas fa-user"></i> Character</button>
+            <button class="template-bar-btn" onclick="insertPlaywritingElement('stage')" title="Stage Direction"><i class="fas fa-directions"></i> Stage</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metadata Modal -->
+  <div class="modal" id="metadataModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-info-circle"></i> Book Metadata</h2>
+        <button class="modal-close" data-action="closeModal" data-param="metadataModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label>Book Title</label> <input type="text" id="bookTitle" placeholder="Enter book title"></div>
+        <div class="form-group"><label>Author Name</label> <input type="text" id="authorName" placeholder="Enter author name"></div>
+        <div class="form-group"><label>ISBN</label> <input type="text" id="isbn" placeholder="ISBN number"></div>
+        <div class="form-group"><label>Genre</label>
+          <select id="genre">
+            <option value="">Select Genre</option>
+            <option value="fiction">Fiction</option>
+            <option value="non-fiction">Non-Fiction</option>
+            <option value="mystery">Mystery</option>
+            <option value="romance">Romance</option>
+            <option value="sci-fi">Science Fiction</option>
+            <option value="fantasy">Fantasy</option>
+            <option value="thriller">Thriller</option>
+            <option value="horror">Horror</option>
+            <option value="biography">Biography</option>
+            <option value="history">History</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Series Name</label> <input type="text" id="seriesName" placeholder="Series name (optional)"></div>
+        <div class="form-group"><label>Publisher</label> <input type="text" id="publisher" placeholder="Publisher name (optional)"></div>
+        <div class="form-group"><label>Book Description</label> <textarea id="bookDescription" placeholder="Enter a brief description"></textarea></div>
+        <div class="btn-group">
+          <button class="btn btn-primary" data-action="saveMetadata">Save Metadata</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-param="metadataModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal" id="exportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-download"></i> Export Manuscript</h2>
+        <button class="modal-close" data-action="closeModal" data-param="exportModal">×</button>
+      </div>
+      <div class="modal-body">
+        <h3 style="margin-bottom: 15px;">Save Options</h3>
+        <div class="checkbox-group">
+          <input type="checkbox" id="includeMetadata" checked>
+          <label for="includeMetadata">Include metadata</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="exportAllChapters" checked>
+          <label for="exportAllChapters">Export all chapters</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="includeTOC" checked>
+          <label for="includeTOC">Include table of contents</label>
+        </div>
+        <h3 style="margin: 25px 0 15px 0;">Export Presets</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+          <button onclick="applyExportPreset('publisher')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+            <i class="fas fa-building"></i> Publisher Ready<br>
+            <small style="font-size: 11px; opacity: 0.9;">DOCX with metadata</small>
+          </button>
+          <button onclick="applyExportPreset('collaboration')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+            <i class="fas fa-users"></i> For Collaboration<br>
+            <small style="font-size: 11px; opacity: 0.9;">RTF for Google Docs</small>
+          </button>
+          <button onclick="applyExportPreset('ebook')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+            <i class="fas fa-book"></i> E-book Format<br>
+            <small style="font-size: 11px; opacity: 0.9;">EPUB format</small>
+          </button>
+          <button onclick="applyExportPreset('print')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+            <i class="fas fa-print"></i> Print Ready<br>
+            <small style="font-size: 11px; opacity: 0.9;">PDF format</small>
+          </button>
+        </div>
+        <h3 style="margin: 25px 0 15px 0;">Select Format</h3>
+        <ul class="export-list">
+          <li data-action="exportDocument" data-param="docx"><i class="fas fa-file-word"></i> <div><strong>DOCX</strong><small>Microsoft Word</small></div></li>
+          <li data-action="exportDocument" data-param="rtf"><i class="fas fa-file-word"></i> <div><strong>RTF</strong><small>Word-compatible rich text</small></div></li>
+          <li data-action="exportDocument" data-param="pdf"><i class="fas fa-file-pdf"></i> <div><strong>PDF</strong><small>Print via browser</small></div></li>
+          <li data-action="exportDocument" data-param="html"><i class="fas fa-code"></i> <div><strong>HTML</strong><small>Web page format</small></div></li>
+          <li data-action="exportDocument" data-param="txt"><i class="fas fa-file-alt"></i> <div><strong>Plain Text</strong><small>Simple text file</small></div></li>
+          <li data-action="exportDocument" data-param="markdown"><i class="fab fa-markdown"></i> <div><strong>Markdown</strong><small>Markdown format</small></div></li>
+          <li data-action="exportDocument" data-param="epub"><i class="fas fa-book"></i> <div><strong>EPUB</strong><small>E-book format</small></div></li>
+          <li data-action="exportDocument" data-param="mobi"><i class="fas fa-tablet-alt"></i> <div><strong>MOBI</strong><small>Kindle format</small></div></li>
+          <li data-action="exportDocument" data-param="backup"><i class="fas fa-database"></i> <div><strong>Full Backup</strong><small>JSON with all data</small></div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Find & Replace Modal -->
+  <div class="modal" id="findReplaceModal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h2><i class="fas fa-search"></i> Find & Replace</h2>
+        <button class="modal-close" data-action="closeModal" data-param="findReplaceModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Find</label>
+          <input type="text" id="findText" placeholder="Text to find" onkeypress="if(event.key==='Enter')findNext(); else loadWordDefinition()">
+        </div>
+        
+        <!-- Definition & Suggestions Section -->
+        <div id="definitionSection" style="display: none; margin: 12px 0; padding: 12px; background: #f9f9f9; border-left: 4px solid #8B4513; border-radius: 6px;">
+          <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
+            <strong>Definition:</strong>
+            <div id="wordDefinition" style="margin-top: 4px; font-style: italic; color: #555;"></div>
+          </div>
+          <div style="font-size: 13px; color: #666;">
+            <strong>Suggestions:</strong>
+            <div id="wordSuggestions" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;"></div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Replace with</label>
+          <input type="text" id="replaceText" placeholder="Replacement text">
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="matchCase">
+          <label for="matchCase">Match case</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="wholeWord">
+          <label for="wholeWord">Whole word only</label>
+        </div>
+        <div style="margin: 12px 0; padding: 8px; background: #f0f0f0; border-radius: 6px; font-size: 13px;">
+          <span id="findStatus">Ready</span>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" data-action="findNext">Find Next</button>
+          <button class="btn btn-primary" data-action="replaceOne">Replace</button>
+          <button class="btn btn-secondary" data-action="replaceAll">Replace All</button>
+          <button class="btn" style="background: #ddd; color: #333;" data-action="clearFindHighlight">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Insert Modal -->
+  <div class="modal" id="tableModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-table"></i> Insert Table</h2>
+        <button class="modal-close" data-action="closeModal" data-param="tableModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label>Rows</label> <input type="number" id="tableRows" value="3" min="1" max="20"></div>
+        <div class="form-group"><label>Columns</label> <input type="number" id="tableCols" value="3" min="1" max="10"></div>
+        <div class="checkbox-group"><input type="checkbox" id="tableHeaders" checked> <label for="tableHeaders">Include header row</label></div>
+        <div class="btn-group">
+          <button class="btn btn-primary" data-action="createTable">Insert Table</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-param="tableModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Options Modal -->
+  <div class="modal" id="printModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-print"></i> Print Options</h2>
+        <button class="modal-close" data-action="closeModal" data-param="printModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>What to Print</label>
+          <select id="printScope">
+            <option value="current">Current Chapter Only</option>
+            <option value="all">All Chapters</option>
+          </select>
+        </div>
+        
+        <div style="padding: 12px; background: #f8f9fa; border-radius: 6px; margin-bottom: 15px;">
+          <label style="font-weight: 600; margin-bottom: 10px; display: block;">Include Options</label>
+          <div class="checkbox-group">
+            <input type="checkbox" id="printChapterTitles" checked>
+            <label for="printChapterTitles">Chapter titles</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="printMetadata">
+            <label for="printMetadata">Metadata (title, author, etc.)</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="printTOC">
+            <label for="printTOC">Table of Contents</label>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Page Size</label>
+          <select id="printPageSize">
+            <option value="letter">Letter (8.5" × 11")</option>
+            <option value="a4">A4 (210mm × 297mm)</option>
+            <option value="legal">Legal (8.5" × 14")</option>
+            <option value="a5">A5 (148mm × 210mm)</option>
+            <option value="executive">Executive (7.25" × 10.5")</option>
+            <option value="b5">B5 (176mm × 250mm)</option>
+            <option value="halfLetter">Half Letter (5.5" × 8.5")</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Margins</label>
+          <select id="printMargins">
+            <option value="1in">Normal (1 inch)</option>
+            <option value="0.5in">Narrow (0.5 inch)</option>
+            <option value="0.75in">Moderate (0.75 inch)</option>
+            <option value="1.5in">Wide (1.5 inches)</option>
+            <option value="1.25in">Manuscript (1.25 inches)</option>
+          </select>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" data-action="confirmPrint"><i class="fas fa-print"></i> Print</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-param="printModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Embed Media Modal -->
+  <div class="modal" id="embedModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-play-circle"></i> Embed Media</h2>
+        <button class="modal-close" data-action="closeModal" data-param="embedModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label>Media Type</label> <select id="embedType">
+          <option value="youtube">YouTube</option>
+          <option value="vimeo">Vimeo</option>
+          <option value="html">HTML</option>
+        </select></div>
+        <div class="form-group"><label>URL or Embed Code</label> <textarea id="embedCode" placeholder="Paste YouTube/Vimeo URL or custom embed HTML"></textarea></div>
+        <div style="padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; margin-bottom: 15px; border-radius: 4px; font-size: 13px;">
+          <strong>⚠️ Note:</strong> If you see "Error 153" or "Video player configuration error", the video owner has disabled embedding. Try a different video.
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" data-action="insertEmbed">Insert Embed</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-param="embedModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Font Download Modal -->
+  <div class="modal" id="fontDownloadModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-cloud-download-alt"></i> Download Fonts Online</h2>
+        <button class="modal-close" data-action="closeModal" data-param="fontDownloadModal">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 20px; color: #666;">Browse and download fonts from popular sources:</p>
+        <ul class="export-list">
+          <li onclick="window.open('https://fonts.google.com', '_blank', 'noopener,noreferrer')">
+            <i class="fab fa-google"></i>
+            <div>
+              <strong>Google Fonts</strong>
+              <div style="font-size: 12px; opacity: 0.8;">Free, open-source fonts optimized for the web</div>
+            </div>
+          </li>
+          <li onclick="window.open('https://www.dafont.com', '_blank', 'noopener,noreferrer')">
+            <i class="fas fa-font"></i>
+            <div>
+              <strong>DaFont</strong>
+              <div style="font-size: 12px; opacity: 0.8;">Archive of freely downloadable fonts</div>
+            </div>
+          </li>
+          <li onclick="window.open('https://www.fontsquirrel.com', '_blank', 'noopener,noreferrer')">
+            <i class="fas fa-font"></i>
+            <div>
+              <strong>Font Squirrel</strong>
+              <div style="font-size: 12px; opacity: 0.8;">100% free commercial fonts</div>
+            </div>
+          </li>
+          <li onclick="window.open('https://fonts.adobe.com', '_blank', 'noopener,noreferrer')">
+            <i class="fab fa-adobe"></i>
+            <div>
+              <strong>Adobe Fonts</strong>
+              <div style="font-size: 12px; opacity: 0.8;">Thousands of fonts from Adobe and partners</div>
+            </div>
+          </li>
+          <li onclick="window.open('https://www.1001fonts.com', '_blank', 'noopener,noreferrer')">
+            <i class="fas fa-font"></i>
+            <div>
+              <strong>1001 Fonts</strong>
+              <div style="font-size: 12px; opacity: 0.8;">Large collection of free fonts</div>
+            </div>
+          </li>
+        </ul>
+        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+          <p style="font-size: 13px; color: #666; margin: 0;"><strong>Tip:</strong> After downloading a font, install it on your computer and refresh this page to see it in the font dropdown menu.</p>
+        </div>
+
+        <hr style="margin: 24px 0; border: 0; border-top: 1px solid #e9ecef;">
+
+        <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #333;">Install from your computer</h4>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; color: #555; margin-bottom: 6px;">Font file (.ttf, .otf, .woff, .woff2)</label>
+          <input type="file" id="fontUploadFile" accept=".ttf,.otf,.woff,.woff2" data-action="handleFontFileSelection" />
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 13px; color: #555; margin-bottom: 6px;">Font name to show in list</label>
+          <input type="text" id="fontUploadName" placeholder="e.g., My Font" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 6px;" />
+        </div>
+        <div class="btn-group" style="gap: 10px;">
+          <button class="btn btn-primary" data-action="installLocalFont"><i class="fas fa-upload"></i> Install for this session</button>
+          <button class="btn btn-secondary" data-action="closeModal" data-param="fontDownloadModal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <i class="fas fa-check-circle"></i>
+    <span id="toastMessage">Action completed!</span>
+  </div>
+
+  <!-- Context menu for editor -->
+  <div class="context-menu" id="editorContextMenu">
+    <div class="context-menu-item" data-action="bold"><i class="fas fa-bold"></i> Bold</div>
+    <div class="context-menu-item" data-action="italic"><i class="fas fa-italic"></i> Italic</div>
+    <div class="context-menu-item" data-action="comment"><i class="fas fa-comment-dots"></i> Add Comment</div>
+    <div class="context-menu-item" data-action="copy"><i class="fas fa-copy"></i> Copy</div>
+  </div>
+
+  <!-- Local SDK & App Scripts -->
+  <!-- Firebase (for cloud sync). Replace firebaseConfig below with your project settings. -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  
+  <!-- Libraries for PDF and Image export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- DOMPurify for safe HTML sanitization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  
+  <script>
+    // Set your Firebase config here or before this script as window.firebaseConfig
+    // SECURITY NOTE: For production, move these to environment variables or server-side config
+    // Current implementation exposes API keys in client-side code
+    window.firebaseConfig = window.firebaseConfig || {
+      apiKey: "AIzaSyBpJiM_p7DdnuH9F-Fzai38zhxkZqpVQj8",
+      authDomain: "writersplaza-f48f8.firebaseapp.com",
+      projectId: "writersplaza-f48f8"
+    };
+    // TODO: Consider using Firebase Admin SDK on server-side instead
+  </script>
+  <script>
+    // Apple Pages Style Font Size Control
+    (function() {
+      const increaseBtn = document.getElementById('increaseFontSizeBtn');
+      const decreaseBtn = document.getElementById('decreaseFontSizeBtn');
+      const sizeDisplay = document.getElementById('fontSizeDisplay');
+      const editor = document.getElementById('editor');
+
+      let currentSize = 12; // Starting size in px
+      let savedSelection = null;
+
+      // Hover effects for buttons
+      if (increaseBtn) {
+        increaseBtn.addEventListener('mouseenter', () => { increaseBtn.style.background = 'rgba(139,69,19,0.2)'; });
+        increaseBtn.addEventListener('mouseleave', () => { increaseBtn.style.background = 'transparent'; });
+      }
+
+      if (decreaseBtn) {
+        decreaseBtn.addEventListener('mouseenter', () => { decreaseBtn.style.background = 'rgba(139,69,19,0.2)'; });
+        decreaseBtn.addEventListener('mouseleave', () => { decreaseBtn.style.background = 'transparent'; });
+      }
+
+      // Save selection when editor loses focus
+      if (editor) {
+        editor.addEventListener('blur', function() {
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0 && !selection.isCollapsed) {
+            savedSelection = selection.getRangeAt(0);
+          }
+        });
+      }
+
+      // Increase font size
+      if (increaseBtn) {
+        increaseBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          changeFontSizeIncrement(1);
+        });
+      }
+
+      // Decrease font size
+      if (decreaseBtn) {
+        decreaseBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          changeFontSizeIncrement(-1);
+        });
+      }
+
+      function changeFontSizeIncrement(delta) {
+        // Get current selection
+        const selection = window.getSelection();
+        let hasSelection = selection.rangeCount > 0 && !selection.isCollapsed;
+
+        // If no active selection, try to use saved one
+        if (!hasSelection && savedSelection) {
+          selection.removeAllRanges();
+          selection.addRange(savedSelection);
+          hasSelection = true;
+        }
+
+        if (!hasSelection) {
+          // No selection, just update the display
+          currentSize = Math.max(6, Math.min(144, currentSize + delta));
+          sizeDisplay.textContent = currentSize + 'px';
+          return;
+        }
+
+        // Calculate new size
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const element = container.nodeType === 3 ? container.parentElement : container;
+        
+        // Get current font size from selected element
+        const computedStyle = window.getComputedStyle(element);
+        const currentPx = parseFloat(computedStyle.fontSize);
+        const currentPt = Math.round(currentPx);
+        
+        // Calculate new size
+        const newSize = Math.max(6, Math.min(144, currentPt + delta));
+        currentSize = newSize;
+        sizeDisplay.textContent = newSize + 'px';
+
+        // Apply to selection
+        applyFontSizeIncrement(newSize);
+
+        // Save the new selection
+        if (selection.rangeCount > 0) {
+          savedSelection = selection.getRangeAt(0);
+        }
+
+        if (editor) editor.focus();
+      }
+
+      function applyFontSizeIncrement(sizePx) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.isCollapsed) return;
+
+        const range = selection.getRangeAt(0);
+        const span = document.createElement('span');
+        span.style.fontSize = sizePx + 'px';
+
+        try {
+          range.surroundContents(span);
+        } catch (e) {
+          const fragment = range.extractContents();
+          span.appendChild(fragment);
+          range.insertNode(span);
+        }
+
+        // Restore selection
+        selection.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.selectNodeContents(span);
+        selection.addRange(newRange);
+      }
+
+      // Update display when selecting text
+      if (editor) {
+        editor.addEventListener('mouseup', function() {
+          const selection = window.getSelection();
+          if (!selection.isCollapsed && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const container = range.commonAncestorContainer;
+            const element = container.nodeType === 3 ? container.parentElement : container;
+            
+            const computedStyle = window.getComputedStyle(element);
+            const currentPx = parseFloat(computedStyle.fontSize);
+            const currentPt = Math.round(currentPx);
+            
+            currentSize = currentPt;
+            sizeDisplay.textContent = currentPt + 'px';
+          }
+        });
+      }
+    })();
+  </script>
+
+  <!-- Templates Library Modal -->
+  <div class="modal" id="templatesLibraryModal" style="display: none;">
+    <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h2><i class="fas fa-layer-group"></i> Templates Library</h2>
+        <button class="modal-close" onclick="closeModal('templatesLibraryModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+          
+          <!-- Novel Templates -->
+          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('hero-journey')" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
+            <h3 style="color: #8B4513; margin-bottom: 10px;"><i class="fas fa-dragon"></i> Hero's Journey</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">The classic storytelling framework for novels</p>
+            <span style="font-size: 11px; background: #8B4513; color: white; padding: 4px 8px; border-radius: 4px;">Novel</span>
+          </div>
+
+          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('three-act')" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
+            <h3 style="color: #8B4513; margin-bottom: 10px;"><i class="fas fa-film"></i> Three-Act Structure</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Setup, Confrontation, Resolution outline</p>
+            <span style="font-size: 11px; background: #8B4513; color: white; padding: 4px 8px; border-radius: 4px;">Novel/Screenplay</span>
+          </div>
+
+          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('character-profile')" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
+            <h3 style="color: #8B4513; margin-bottom: 10px;"><i class="fas fa-user-circle"></i> Character Profile</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Comprehensive character development sheet</p>
+            <span style="font-size: 11px; background: #8B4513; color: white; padding: 4px 8px; border-radius: 4px;">Planning</span>
+          </div>
+
+          <!-- Screenplay Templates -->
+          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('save-the-cat')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
+            <h3 style="color: #28a745; margin-bottom: 10px;"><i class="fas fa-cat"></i> Save the Cat</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">15 beat screenplay structure</p>
+            <span style="font-size: 11px; background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Screenplay</span>
+          </div>
+
+          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('scene-outline')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
+            <h3 style="color: #28a745; margin-bottom: 10px;"><i class="fas fa-list-ol"></i> Scene Outline</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Scene-by-scene breakdown template</p>
+            <span style="font-size: 11px; background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Screenplay</span>
+          </div>
+
+          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('screenplay-beat')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
+            <h3 style="color: #28a745; margin-bottom: 10px;"><i class="fas fa-heartbeat"></i> Beat Sheet</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Page-by-page plot beats</p>
+            <span style="font-size: 11px; background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Screenplay</span>
+          </div>
+
+          <!-- Playwriting Templates -->
+          <div style="border: 2px solid #6f42c1; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('play-structure')" onmouseover="this.style.borderColor='#9561e2'; this.style.background='rgba(111,66,193,0.05)'" onmouseout="this.style.borderColor='#6f42c1'; this.style.background='white'">
+            <h3 style="color: #6f42c1; margin-bottom: 10px;"><i class="fas fa-theater-masks"></i> Play Structure</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Acts and scenes framework</p>
+            <span style="font-size: 11px; background: #6f42c1; color: white; padding: 4px 8px; border-radius: 4px;">Playwriting</span>
+          </div>
+
+          <div style="border: 2px solid #6f42c1; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('monologue')" onmouseover="this.style.borderColor='#9561e2'; this.style.background='rgba(111,66,193,0.05)'" onmouseout="this.style.borderColor='#6f42c1'; this.style.background='white'">
+            <h3 style="color: #6f42c1; margin-bottom: 10px;"><i class="fas fa-microphone"></i> Monologue Template</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Structured monologue format</p>
+            <span style="font-size: 11px; background: #6f42c1; color: white; padding: 4px 8px; border-radius: 4px;">Playwriting</span>
+          </div>
+
+          <!-- Planning Templates -->
+          <div style="border: 2px solid #17a2b8; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('world-building')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(23,162,184,0.05)'" onmouseout="this.style.borderColor='#17a2b8'; this.style.background='white'">
+            <h3 style="color: #17a2b8; margin-bottom: 10px;"><i class="fas fa-globe"></i> World Building</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Create detailed fictional worlds</p>
+            <span style="font-size: 11px; background: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px;">Planning</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project Manager Modal -->
+  <div class="modal" id="projectManagerModal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="margin: 0;"><i class="fas fa-folder-open"></i> Project Manager</h2>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button onclick="importProject()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+            <i class="fas fa-upload"></i> Import Project
+          </button>
+          <button class="modal-close" onclick="closeModal('projectManagerModal')">×</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 20px; padding: 12px; background: rgba(139,69,19,0.1); border-left: 4px solid #8B4513; border-radius: 6px; font-size: 13px;">
+          <i class="fas fa-info-circle"></i> Manage multiple writing projects. Each project saves independently.
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <h3 style="margin-bottom: 10px;">Create New Project</h3>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="newProjectName" placeholder="Project name (e.g., My Novel)"
+                   style="flex: 1; padding: 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px;"
+                   onkeypress="if(event.key==='Enter')createNewProject()">
+            <select id="newProjectTemplate" style="padding: 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px;">
+              <option value="novel">Novel</option>
+              <option value="screenplay">Screenplay</option>
+              <option value="playwriting">Playwriting</option>
+            </select>
+            <button onclick="createNewProject()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap;">
+              <i class="fas fa-plus"></i> Create
+            </button>
+          </div>
+        </div>
+        
+        <div>
+          <h3 style="margin-bottom: 15px;">Your Projects</h3>
+          <div id="projectsList" style="display: grid; gap: 12px;">
+            <div style="text-align: center; color: #999; padding: 40px; font-size: 14px;">
+              <i class="fas fa-folder-open" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i><br>
+              No projects yet. Create your first project above!
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="templates.js"></script>
+  <script src="screenplay-auto-format.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "writersplaza-editor",
+  "version": "1.0.0",
+  "description": "A secure and feature-rich writing editor",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "build": "echo 'No build step required - static site'",
+    "deploy": "netlify deploy --prod --dir=."
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "keywords": [
+    "writing",
+    "editor",
+    "manuscript",
+    "novel",
+    "screenplay"
+  ],
+  "author": "Writersplaza",
+  "license": "MIT"
+}
