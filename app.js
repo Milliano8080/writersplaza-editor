@@ -8413,7 +8413,7 @@ function saveAs() {
       <button onclick="confirmSaveAs()" style="flex: 1; padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
         <i class="fas fa-download"></i> Save File
       </button>
-      <button onclick="closeSaveAsModal()" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancel</button>
+      <button data-action="closeSaveAsModal" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancel</button>
     </div>
   `;
   
@@ -9563,7 +9563,7 @@ function openKeyboardShortcutsModal() {
       <h2 style="margin: 0; color: #333; font-size: 22px; display: flex; align-items: center; gap: 10px;">
         <i class="fas fa-keyboard" style="color: #8B4513;"></i> Keyboard Shortcuts
       </h2>
-      <button onclick="closeKeyboardShortcutsModal()" style="background: none; border: none; font-size: 28px; color: #999; cursor: pointer; line-height: 1; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;" onmouseover="this.style.background='#f1f3f5'; this.style.color='#333';" onmouseout="this.style.background='none'; this.style.color='#999';">×</button>
+      <button data-action="closeKeyboardShortcutsModal" style="background: none; border: none; font-size: 28px; color: #999; cursor: pointer; line-height: 1; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;" onmouseover="this.style.background='#f1f3f5'; this.style.color='#333';" onmouseout="this.style.background='none'; this.style.color='#999';">×</button>
     </div>
     
     <div style="background: linear-gradient(135deg, #8B4513 0%, #8B4513 100%); color: #1A120B; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; font-weight: bold;">
@@ -9572,7 +9572,7 @@ function openKeyboardShortcutsModal() {
     
     ${shortcutsHTML}
     
-    <button onclick="closeKeyboardShortcutsModal()" style="width: 100%; margin-top: 20px; padding: 12px; background: #8B4513; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.background='#8B4513'" onmouseout="this.style.background='#8B4513'">
+    <button data-action="closeKeyboardShortcutsModal" style="width: 100%; margin-top: 20px; padding: 12px; background: #8B4513; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.background='#8B4513'" onmouseout="this.style.background='#8B4513'">
       Got it!
     </button>
   `;
@@ -9941,6 +9941,14 @@ function setupCentralizedEventHandlers() {
       case 'closeVersionHistoryModal': 
         console.log('Closing version history modal...');
         closeVersionHistoryModal(); 
+        break;
+      case 'closeSaveAsModal': 
+        console.log('Closing save as modal...');
+        closeSaveAsModal(); 
+        break;
+      case 'closeKeyboardShortcutsModal': 
+        console.log('Closing keyboard shortcuts modal...');
+        closeKeyboardShortcutsModal(); 
         break;
       case 'openExport': openExportModal(); break;
       case 'saveAll': saveAll(); break;
@@ -10831,7 +10839,24 @@ function importProject() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const importData = JSON.parse(event.target.result);
+        const result = event.target.result;
+        
+        // Check if result is empty or invalid
+        if (!result || result.trim() === '') {
+          showToast('File is empty or invalid', 'error');
+          return;
+        }
+        
+        // Try to parse JSON with better error handling
+        let importData;
+        try {
+          importData = JSON.parse(result);
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          console.error('File content:', result.substring(0, 200));
+          showToast('Invalid JSON format in project file', 'error');
+          return;
+        }
         
         if (!importData.project || !importData.data) {
           showToast('Invalid project file format', 'error');
