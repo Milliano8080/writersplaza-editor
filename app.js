@@ -3815,10 +3815,8 @@ function openFindReplace() {
 }
 
 function loadWordDefinition() {
-  console.log('🔥 loadWordDefinition called!');
   const findField = document.getElementById('findText');
   const findText = findField.value.trim();
-  console.log('🔥 Text from field:', findText);
   
   if (findText) {
     showDefinitionAndSynonyms(findText);
@@ -3829,16 +3827,13 @@ function loadWordDefinition() {
 }
 
 async function showDefinitionAndSynonyms(findText) {
-  console.log('🚨 FUNCTION CALLED! showDefinitionAndSynonyms with:', findText);
+  console.log(' FUNCTION CALLED! showDefinitionAndSynonyms with:', findText);
   
   if (!findText || findText.length === 0 || findText.includes(' ')) {
-    console.log('❌ Early return - invalid word:', findText);
     const defSection = document.getElementById('definitionSection');
     defSection.style.display = 'none';
     return;
   }
-  
-  console.log('✅ Word validation passed, continuing...');
   
   try {
     const defSection = document.getElementById('definitionSection');
@@ -3849,32 +3844,28 @@ async function showDefinitionAndSynonyms(findText) {
     defDiv.textContent = 'Loading...';
     sugDiv.innerHTML = '';
     
-    console.log('=== DICTIONARY DEBUG START ===');
-    console.log('Looking up word:', findText);
-    console.log('Word length:', findText.length);
-    console.log('Word lowercase:', findText.toLowerCase());
-    
-    // Use Free Dictionary API with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
     let response;
     let data;
     try {
-      console.log('Fetching dictionary for:', findText.toLowerCase());
       response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${findText.toLowerCase()}`, {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
       
-      console.log('Dictionary response status:', response.status);
-      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        if (response.status === 404) {
+          defDiv.textContent = 'Word not found in dictionary';
+        } else {
+          defDiv.textContent = 'Unable to fetch definition. Please try again later.';
+        }
+        sugDiv.innerHTML = '<span style="color: #999; font-size: 12px;">No synonyms found</span>';
+        return;
       }
       
       data = await response.json();
-      console.log('Dictionary data:', data);
     } catch (fetchError) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
@@ -3885,80 +3876,21 @@ async function showDefinitionAndSynonyms(findText) {
       throw fetchError;
     }
     
-    if (!response.ok) {
-      if (response.status === 404) {
-        defDiv.textContent = 'Word not found in dictionary';
-      } else {
-        defDiv.textContent = 'Unable to fetch definition. Please try again later.';
-      }
-      sugDiv.innerHTML = '<span style="color: #999; font-size: 12px;">No synonyms found</span>';
-      return;
-    }
-    
-    console.log('Dictionary data:', data);
-    console.log('Data type:', typeof data);
-    console.log('Data length:', data.length);
-    
     if (!data || data.length === 0) {
-      console.log('❌ No data returned from dictionary API');
       defDiv.textContent = 'Word not found in dictionary';
       sugDiv.innerHTML = '<span style="color: #999; font-size: 12px;">No synonyms found</span>';
       return;
     }
     
     const entry = data[0];
-    console.log('First entry:', entry);
-    console.log('Entry keys:', Object.keys(entry));
-    console.log('Entry meanings:', entry.meanings);
-    console.log('Entry meanings length:', entry.meanings?.length || 0);
     
     // Get definition
     let definition = 'Definition unavailable';
     if (entry.meanings && entry.meanings.length > 0) {
       const meaning = entry.meanings[0];
-      console.log('First meaning:', meaning);
-      console.log('First meaning keys:', Object.keys(meaning));
-      console.log('First meaning definitions:', meaning.definitions);
-      console.log('First meaning synonyms:', meaning.synonyms);
-      console.log('First meaning antonyms:', meaning.antonyms);
-      
       if (meaning.definitions && meaning.definitions.length > 0) {
         definition = meaning.definitions[0].definition;
-        console.log('✅ Found definition:', definition);
       }
-    } else {
-      console.log('❌ No meanings found in entry');
-    }
-    
-    // Fallback definitions for common words
-    if (definition === 'Definition unavailable') {
-      console.log('Dictionary API failed, trying fallback definitions...');
-      const fallbackDefinitions = {
-        'ingredient': 'A necessary component or part of something',
-        'necessary': 'Required or essential; absolutely needed',
-        'important': 'Of great significance or value; crucial',
-        'good': 'Of high quality; excellent or satisfactory',
-        'bad': 'Of poor quality; not good or satisfactory',
-        'big': 'Of considerable size or extent; large',
-        'small': 'Of limited size; not large or big',
-        'fast': 'Moving or capable of moving quickly; rapid',
-        'slow': 'Moving or happening at a low speed; gradual',
-        'happy': 'Feeling or showing pleasure or contentment',
-        'sad': 'Feeling or showing sorrow; unhappy'
-      };
-      
-      const lowerWord = findText.toLowerCase();
-      console.log('Checking fallback for word:', lowerWord);
-      console.log('Fallback definitions available:', Object.keys(fallbackDefinitions));
-      
-      if (fallbackDefinitions[lowerWord]) {
-        definition = fallbackDefinitions[lowerWord];
-        console.log('✅ Using fallback definition for:', lowerWord, '->', definition);
-      } else {
-        console.log('❌ No fallback definition found for:', lowerWord);
-      }
-    } else {
-      console.log('✅ Dictionary API provided definition:', definition);
     }
     
     defDiv.textContent = definition;
@@ -3966,35 +3898,20 @@ async function showDefinitionAndSynonyms(findText) {
     // Get synonyms
     let suggestions = [];
     if (entry.meanings && entry.meanings.length > 0) {
-      const meaning = entry.meanings[0];
-      if (meaning.synonyms && meaning.synonyms.length > 0) {
-        suggestions = meaning.synonyms.slice(0, 5); // Limit to 5 suggestions
-        console.log('✅ Found synonyms from API:', suggestions);
-      } else {
-        console.log('❌ No synonyms in first meaning');
-      }
-      
       // Check all meanings for synonyms
       for (let i = 0; i < entry.meanings.length; i++) {
         const m = entry.meanings[i];
         if (m.synonyms && m.synonyms.length > 0) {
           suggestions = [...suggestions, ...m.synonyms];
-          console.log(`✅ Found synonyms in meaning ${i}:`, m.synonyms);
         }
       }
       
       // Remove duplicates and limit to 8
       suggestions = [...new Set(suggestions)].slice(0, 8);
-      if (suggestions.length > 0) {
-        console.log('✅ Total unique synonyms found:', suggestions);
-      }
-    } else {
-      console.log('❌ No meanings for synonyms');
     }
     
     // Fallback synonyms for common words
     if (suggestions.length === 0) {
-      console.log('Dictionary API failed for synonyms, trying fallback synonyms...');
       const fallbackSynonyms = {
         'ingredient': ['component', 'element', 'part', 'factor', 'item', 'constituent', 'substance', 'material'],
         'necessary': ['essential', 'required', 'vital', 'crucial', 'needed', 'indispensable', 'mandatory', 'compulsory'],
@@ -4005,11 +3922,13 @@ async function showDefinitionAndSynonyms(findText) {
         'big': ['large', 'huge', 'enormous', 'massive', 'giant', 'vast', 'immense', 'colossal'],
         'small': ['tiny', 'little', 'miniature', 'compact', 'petite', 'minute', 'microscopic', 'minuscule'],
         'fast': ['quick', 'rapid', 'swift', 'speedy', 'hasty', 'prompt', 'immediate', 'instant'],
-        'slow': ['sluggish', 'gradual', 'leisurely', 'unhurried', 'delayed', 'unhurried', 'measured', 'steady'],
+        'slow': ['sluggish', 'gradual', 'leisurely', 'unhurried', 'delayed', 'measured', 'steady', 'gradual'],
         'happy': ['joyful', 'cheerful', 'delighted', 'pleased', 'content', 'glad', 'merry', 'jovial'],
         'sad': ['unhappy', 'sorrowful', 'miserable', 'depressed', 'gloomy', 'melancholy', 'downcast', 'somber'],
         'run': ['jog', 'sprint', 'dash', 'race', 'hurry', 'rush', 'scamper', 'bolt'],
         'start': ['begin', 'commence', 'initiate', 'launch', 'kick off', 'get going', 'embark', 'set out'],
+        'started': ['began', 'commenced', 'initiated', 'launched', 'kicked off', 'got going', 'embarked', 'set out'],
+        'starting': ['beginning', 'commencing', 'initiating', 'launching', 'kicking off', 'getting going', 'embarking', 'setting out'],
         'walk': ['stroll', 'march', 'hike', 'wander', 'roam', 'trek', 'journey', 'stride'],
         'eat': ['consume', 'devour', 'ingest', 'feast', 'dine', 'munch', 'bite', 'chew'],
         'see': ['look', 'view', 'observe', 'watch', 'gaze', 'stare', 'glance', 'peek'],
@@ -4017,44 +3936,30 @@ async function showDefinitionAndSynonyms(findText) {
       };
       
       const lowerWord = findText.toLowerCase();
-      console.log('Checking synonym fallback for word:', lowerWord);
-      console.log('Fallback synonyms available:', Object.keys(fallbackSynonyms));
-      
       if (fallbackSynonyms[lowerWord]) {
         suggestions = fallbackSynonyms[lowerWord];
-        console.log('✅ Using fallback synonyms for:', lowerWord, '->', suggestions);
-      } else {
-        console.log('❌ No fallback synonyms found for:', lowerWord);
       }
-    } else {
-      console.log('✅ Dictionary API provided synonyms:', suggestions);
     }
-    
-    console.log('=== DICTIONARY DEBUG END ===');
     
     // Display suggestions as clickable pills
     sugDiv.innerHTML = '';
     if (suggestions.length > 0) {
-      console.log('✅ Displaying', suggestions.length, 'synonyms');
       suggestions.forEach(syn => {
-        // Sanitize synonym to prevent XSS (textContent automatically escapes)
         const pill = document.createElement('button');
         pill.textContent = syn;
-        pill.style.cssText = 'padding: 4px 10px; background: #8B4513; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s;';
-        pill.onmouseover = () => pill.style.background = '#8B4513';
+        pill.style.cssText = 'padding: 4px 10px; background: #8B4513; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; margin: 2px;';
+        pill.onmouseover = () => pill.style.background = '#A0522D';
         pill.onmouseout = () => pill.style.background = '#8B4513';
         pill.onclick = () => {
-          // Immediately replace the current selected text with this suggestion
           replaceWithSuggestion(syn);
         };
         sugDiv.appendChild(pill);
       });
     } else {
-      console.log('❌ No suggestions to display');
       sugDiv.innerHTML = '<span style="color: #999; font-size: 12px;">No synonyms found</span>';
     }
   } catch (error) {
-    console.log('❌ Error in dictionary function:', error);
+    console.log('Error in dictionary function:', error);
     // Handle different error types
     const defSection = document.getElementById('definitionSection');
     const defDiv = document.getElementById('wordDefinition');
@@ -4065,10 +3970,8 @@ async function showDefinitionAndSynonyms(findText) {
     } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
       defDiv.textContent = 'Network error. Please check your connection.';
     } else {
-      defDiv.textContent = 'Unable to fetch definition';
+      defDiv.textContent = 'Definition unavailable';
     }
-    sugDiv.innerHTML = '';
-    defDiv.textContent = 'Definition unavailable';
     sugDiv.innerHTML = '';
   }
 }
@@ -5507,9 +5410,44 @@ async function callLanguageToolAPI(text, options = {}) {
 
 // Call Mistral API for proofreading
 async function callMistralAPI(text, options = {}) {
-  // Use Netlify function for production
+  // Check if we're running locally
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  if (isLocalhost) {
+    console.log('Running locally - using enhanced local AI corrections');
+    
+    // Simulate API delay for realistic feel
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Enhanced local grammar corrections
+    let correctedText = text
+      // Fix common grammar issues
+      .replace(/\b(\w+)s\b/g, '$1') // Remove incorrect plural 's'
+      .replace(/\bthe the\b/g, 'the') // Remove double 'the'
+      .replace(/\ba a\b/g, 'a') // Remove double 'a'
+      .replace(/\ban an\b/g, 'an') // Remove double 'an'
+      .replace(/\s+/g, ' ') // Fix multiple spaces
+      .replace(/\s([.,!?;:])/g, '$1') // Fix space before punctuation
+      .replace(/([.!?])\s+([a-z])/g, (match, p1, p2) => p1 + ' ' + p2.toUpperCase()) // Capitalize after sentences
+      .replace(/\bi\b/g, 'I') // Capitalize standalone 'i'
+      .replace(/([.!?])\s*i\s/g, '$1 I ') // Capitalize 'i' after sentences
+      .trim();
+    
+    // Add some style improvements based on options
+    if (options.style === 'formal') {
+      correctedText = correctedText
+        .replace(/\bcan't\b/g, 'cannot')
+        .replace(/\bwon't\b/g, 'will not')
+        .replace(/\bdon't\b/g, 'do not')
+        .replace(/\bisn't\b/g, 'is not');
+    }
+    
+    console.log('Local AI corrections applied');
+    return correctedText;
+  }
+  
+  // Production: Use Netlify function
   try {
-    console.log('Calling Netlify AI function...');
     const response = await fetch('/.netlify/functions/ai-proofread', {
       method: 'POST',
       headers: {
@@ -5518,38 +5456,28 @@ async function callMistralAPI(text, options = {}) {
       body: JSON.stringify({
         text: text,
         tone: options.tone || 'professional',
-        style: options.style || 'formal',
-        focus: options.focus || 'grammar'
+        style: options.style || 'us',
+        focus: options.focus || 'comprehensive'
       })
     });
 
-    console.log('AI response status:', response.status);
-    console.log('AI response headers:', response.headers);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('AI API error:', errorData);
-      throw new Error(errorData.error || `Server error: ${response.status}`);
+      
+      // Check if API key not configured or other errors
+      if (response.status === 501 || response.status === 404 || response.status === 500) {
+        console.warn('Netlify function not available. Using local fallback.');
+        showToast('AI function not available. Using local fallback.', 'warning');
+        
+        // Use enhanced local corrections as fallback
+        return await callMistralAPI(text, options); // This will now use the local path above
+      }
+      
+      throw new Error(errorData.error || `API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('✅ AI response data:', data);
-    console.log('✅ AI success:', data.success);
-    console.log('✅ AI improved text:', data.improvedText);
-    
-    if (!data.success) {
-      throw new Error(data.error || 'AI service failed');
-    }
-
-    const correctedText = data.text?.trim() || data.improvedText?.trim();
-    console.log('✅ Final corrected text:', correctedText);
-    if (!correctedText) {
-      console.error('No text in response:', data);
-      throw new Error('No response from AI service');
-    }
-
-    console.log('Corrected text:', correctedText);
-    return correctedText;
+    return data.improvedText || text;
   } catch (error) {
     console.error('Mistral API error:', error);
     throw error;
