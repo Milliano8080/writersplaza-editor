@@ -9918,6 +9918,11 @@ function setupCentralizedEventHandlers() {
     const action = target.getAttribute('data-action');
     const param = target.getAttribute('data-param');
     
+    // Debug logging for version history
+    if (action === 'openVersionHistory') {
+      console.log('History button clicked! Action:', action, 'Target:', target);
+    }
+    
     // Route to appropriate handler
     switch(action) {
       case 'toggleSidebar': 
@@ -9929,7 +9934,10 @@ function setupCentralizedEventHandlers() {
       case 'addNewPage': addNewPage(); break;
       case 'toggleDarkMode': toggleDarkMode(); break;
       case 'toggleFocusMode': toggleFocusMode(); break;
-      case 'openVersionHistory': openVersionHistoryModal(); break;
+      case 'openVersionHistory': 
+        console.log('Opening version history modal...');
+        openVersionHistoryModal(); 
+        break;
       case 'openExport': openExportModal(); break;
       case 'saveAll': saveAll(); break;
       case 'openKeyboardShortcuts': openKeyboardShortcutsModal(); break;
