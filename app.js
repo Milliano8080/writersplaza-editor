@@ -1116,7 +1116,14 @@ function getUserIdFromUrlOrStorage() {
     return fromUrl;
   }
   const stored = localStorage.getItem('userId');
-  return stored || null;
+  if (stored) {
+    return stored;
+  }
+  // Auto-generate userId if none exists - this is critical for Firebase to work
+  const newUserId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  localStorage.setItem('userId', newUserId);
+  logger.log('Auto-generated userId:', newUserId);
+  return newUserId;
 }
 
 function hasValidFirebaseConfig() {
@@ -1128,15 +1135,22 @@ function hasValidFirebaseConfig() {
 
 async function initFirebaseIfPossible() {
   if (firebaseReady) return true;
-  if (typeof firebase === 'undefined' || !firebase.initializeApp) return false;
-  if (!hasValidFirebaseConfig()) return false;
+  if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+    logger.error('Firebase SDK not loaded - check if Firebase scripts are loaded');
+    return false;
+  }
+  if (!hasValidFirebaseConfig()) {
+    logger.error('Invalid Firebase config - check firebaseConfig in index.html');
+    return false;
+  }
   try {
     firebaseApp = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
     firestoreDb = firebase.firestore();
     firebaseReady = true;
+    logger.log('Firebase initialized successfully');
     return true;
   } catch (e) {
-    logger.warn('Firebase init failed, using local storage only:', e);
+    logger.error('Firebase init failed, using local storage only:', e);
     return false;
   }
 }
