@@ -1,5 +1,9 @@
 const fetch = require('node-fetch');
 
+// Debug: Check if environment variable is loaded
+console.log('Environment variables:', Object.keys(process.env));
+console.log('MISTRAL_API_KEY exists:', !!process.env.MISTRAL_API_KEY);
+
 exports.handler = async function(event, context) {
   try {
     // Only allow POST requests
