@@ -34,6 +34,30 @@ const CONSTANTS = {
     RESIZE: 250,
     STATS_UPDATE: 500,
     AUTO_SAVE: 2000
+  },
+  IS_DEVELOPMENT: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('dev')
+};
+
+// Development-only logging utility
+const logger = {
+  log: function(...args) {
+    if (CONSTANTS.IS_DEVELOPMENT) {
+      console.log(...args);
+    }
+  },
+  warn: function(...args) {
+    if (CONSTANTS.IS_DEVELOPMENT) {
+      console.warn(...args);
+    }
+  },
+  error: function(...args) {
+    // Always log errors, even in production
+    console.error(...args);
+  },
+  info: function(...args) {
+    if (CONSTANTS.IS_DEVELOPMENT) {
+      console.info(...args);
+    }
   }
 };
 
@@ -68,6 +92,53 @@ function throttle(func, limit) {
   };
 }
 
+// Input Validation Utilities
+function validateData(data, type = 'string') {
+  if (data === null || data === undefined) return false;
+  if (type === 'string' && typeof data !== 'string') return false;
+  if (type === 'number' && (typeof data !== 'number' || isNaN(data))) return false;
+  if (type === 'array' && !Array.isArray(data)) return false;
+  if (type === 'object' && (typeof data !== 'object' || Array.isArray(data))) return false;
+  return true;
+}
+
+function validateChapterName(name) {
+  if (!name || typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return false;
+  if (trimmed.length > 200) return false; // Reasonable limit
+  // Allow alphanumeric, spaces, hyphens, underscores, and common punctuation
+  if (!/^[a-zA-Z0-9\s\-_.,!?'":;()]+$/.test(trimmed)) return false;
+  return true;
+}
+
+function validateProjectName(name) {
+  if (!name || typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return false;
+  if (trimmed.length > 100) return false; // Reasonable limit
+  // Allow alphanumeric, spaces, hyphens, underscores
+  if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmed)) return false;
+  return true;
+}
+
+function validateUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const urlObj = new URL(url);
+    return ['http:', 'https:', 'data:', 'blob:'].includes(urlObj.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function validateFilename(filename) {
+  if (!filename || typeof filename !== 'string') return false;
+  // Remove invalid filename characters
+  const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
+  return !invalidChars.test(filename) && filename.length > 0 && filename.length < 255;
+}
+
 // Secure Storage with Encryption for sensitive data
 const secureStorage = {
   // Simple encryption for client-side storage (not military grade, but better than plain text)
@@ -81,7 +152,7 @@ const secureStorage = {
       }
       return btoa(result); // Base64 encode
     } catch (e) {
-      console.warn('Encryption failed:', e);
+      logger.warn('Encryption failed:', e);
       return text; // Fallback to plain text
     }
   },
@@ -96,7 +167,7 @@ const secureStorage = {
       }
       return result;
     } catch (e) {
-      console.warn('Decryption failed:', e);
+      logger.warn('Decryption failed:', e);
       return encryptedText; // Return as-is if decryption fails
     }
   },
@@ -118,7 +189,7 @@ const secureStorage = {
       localStorage.setItem('secure_' + key, encrypted);
       return true;
     } catch (e) {
-      console.warn('Secure storage setItem failed:', e);
+      logger.warn('Secure storage setItem failed:', e);
       return false;
     }
   },
@@ -129,7 +200,7 @@ const secureStorage = {
       if (!encrypted) return null;
       return this._decrypt(encrypted);
     } catch (e) {
-      console.warn('Secure storage getItem failed:', e);
+      logger.warn('Secure storage getItem failed:', e);
       return null;
     }
   },
@@ -139,7 +210,7 @@ const secureStorage = {
       localStorage.removeItem('secure_' + key);
       return true;
     } catch (e) {
-      console.warn('Secure storage removeItem failed:', e);
+      logger.warn('Secure storage removeItem failed:', e);
       return false;
     }
   },
@@ -149,7 +220,7 @@ const secureStorage = {
     try {
       return localStorage.getItem(key);
     } catch (e) {
-      console.warn('localStorage.getItem failed:', e);
+      logger.warn('localStorage.getItem failed:', e);
       return null;
     }
   },
@@ -159,7 +230,7 @@ const secureStorage = {
       localStorage.setItem(key, value);
       return true;
     } catch (e) {
-      console.warn('localStorage.setItem failed (quota exceeded?):', e);
+      logger.warn('localStorage.setItem failed (quota exceeded?):', e);
       // Try to clear old data if quota exceeded
       if (e.name === 'QuotaExceededError') {
         return this._handleQuotaExceeded(key, value);
@@ -170,12 +241,12 @@ const secureStorage = {
   
   _handleQuotaExceeded: function(key, value) {
     try {
-      console.log('Storage quota exceeded, attempting cleanup...');
+      logger.log('Storage quota exceeded, attempting cleanup...');
       
       // Priority order for keeping data
       const priorityKeys = [
         'editorContent', 'chapters', 'metadata', 'currentProjectId',
-        'secure_mistral_api_key', 'proofreading_engine', 'userKey'
+        'proofreading_engine', 'userKey'
       ];
       
       // Get all keys sorted by priority
@@ -187,21 +258,21 @@ const secureStorage = {
         try {
           localStorage.removeItem(k);
         } catch (e) {
-          console.warn(`Failed to remove key ${k}:`, e);
+          logger.warn(`Failed to remove key ${k}:`, e);
         }
       });
       
       // Try again
       localStorage.setItem(key, value);
-      console.log('Storage cleanup successful');
+      logger.log('Storage cleanup successful');
       return true;
       
     } catch (e2) {
-      console.error('Failed to recover from quota error:', e2);
+      logger.error('Failed to recover from quota error:', e2);
       
       // Last resort: clear all non-secure data except essentials
       try {
-        const essentialKeys = ['editorContent', 'secure_mistral_api_key', 'userKey'];
+        const essentialKeys = ['editorContent', 'userKey'];
         const allKeys = Object.keys(localStorage);
         allKeys.forEach(k => {
           if (!essentialKeys.includes(k)) {
@@ -209,10 +280,10 @@ const secureStorage = {
           }
         });
         localStorage.setItem(key, value);
-        console.log('Emergency storage cleanup completed');
+        logger.log('Emergency storage cleanup completed');
         return true;
       } catch (e3) {
-        console.error('Emergency cleanup failed:', e3);
+        logger.error('Emergency cleanup failed:', e3);
         if (typeof showToast === 'function') {
           showToast('Storage is full. Please clear some data.', 'error');
         }
@@ -240,7 +311,7 @@ const secureStorage = {
         quotaUsed: ((totalSize / (5 * 1024 * 1024)) * 100).toFixed(1) // Assuming 5MB quota
       };
     } catch (e) {
-      console.error('Failed to get storage stats:', e);
+      logger.error('Failed to get storage stats:', e);
       return null;
     }
   },
@@ -250,7 +321,7 @@ const secureStorage = {
       localStorage.removeItem(key);
       return true;
     } catch (e) {
-      console.warn('localStorage.removeItem failed:', e);
+      logger.warn('localStorage.removeItem failed:', e);
       return false;
     }
   }
@@ -285,6 +356,23 @@ const safeHTML = {
     element.innerHTML = sanitized;
   },
   
+  // Safely set innerHTML with automatic sanitization for user content
+  safeSetHTML: function(element, html, isUserContent = false) {
+    if (!element) return;
+    if (!html) {
+      element.innerHTML = '';
+      return;
+    }
+    if (isUserContent) {
+      // For user content, use setHTML with enhanced sanitization
+      // This removes script tags and dangerous attributes while preserving safe formatting
+      this.setHTML(element, html);
+    } else {
+      // For trusted HTML (like UI templates), use setHTML
+      this.setHTML(element, html);
+    }
+  },
+  
   // Safely create element with attributes
   createElement: function(tag, attributes = {}, textContent = '') {
     const element = document.createElement(tag);
@@ -313,7 +401,7 @@ function safeExecute(func, errorMessage = 'An error occurred', showToast = true)
     try {
       return func.apply(this, args);
     } catch (error) {
-      console.error(errorMessage, error);
+      logger.error(errorMessage, error);
       if (showToast && typeof showToast === 'function') {
         showToast(errorMessage, 'error');
       } else if (showToast && typeof showToast === 'string') {
@@ -332,7 +420,7 @@ async function safeAsyncExecute(func, errorMessage = 'An error occurred', showTo
     try {
       return await func.apply(this, args);
     } catch (error) {
-      console.error(errorMessage, error);
+      logger.error(errorMessage, error);
       if (showToast && typeof showToast === 'function') {
         showToast(errorMessage, 'error');
       } else if (showToast && typeof showToast === 'string') {
@@ -347,7 +435,7 @@ async function safeAsyncExecute(func, errorMessage = 'An error occurred', showTo
 
 // Global error handler for unhandled errors
 window.addEventListener('error', function(event) {
-  console.error('Global error:', event.error);
+  logger.error('Global error:', event.error);
   if (typeof showToast === 'function') {
     showToast('An unexpected error occurred. Please try again.', 'error');
   }
@@ -355,7 +443,7 @@ window.addEventListener('error', function(event) {
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
-  console.error('Unhandled promise rejection:', event.reason);
+  logger.error('Unhandled promise rejection:', event.reason);
   if (typeof showToast === 'function') {
     showToast('A network error occurred. Please check your connection.', 'error');
   }
@@ -374,7 +462,7 @@ const timerManager = {
       try {
         callback();
       } catch (error) {
-        console.error(`Timer ${id} callback error:`, error);
+        logger.error(`Timer ${id} callback error:`, error);
       } finally {
         this.timers.delete(id);
       }
@@ -441,7 +529,7 @@ function applyDropCap() {
 function toggleToolbarPanel() {
   const panel = document.getElementById('toolbarPanel');
   if (!panel) {
-    console.error('Toolbar panel element not found');
+    logger.error('Toolbar panel element not found');
     return;
   }
   panel.classList.toggle('open');
@@ -589,7 +677,7 @@ function addNewPage(content = '') {
   newPage.className = 'editor-page';
   newPage.contentEditable = 'true';
   newPage.spellcheck = true;
-  newPage.innerHTML = content;
+  safeHTML.safeSetHTML(newPage, content, true); // User content - needs sanitization
   
   // Get current size from FIRST existing page's INLINE styles (not computed - this is the source of truth)
   const allPages = pageWrapper.querySelectorAll('.editor-page');
@@ -1048,7 +1136,7 @@ async function initFirebaseIfPossible() {
     firebaseReady = true;
     return true;
   } catch (e) {
-    console.warn('Firebase init failed, using local storage only:', e);
+    logger.warn('Firebase init failed, using local storage only:', e);
     return false;
   }
 }
@@ -1072,7 +1160,7 @@ async function loadFromFirestore() {
     }
     return true;
   } catch (err) {
-    console.warn('Cloud load failed, falling back to local:', err);
+    logger.warn('Cloud load failed, falling back to local:', err);
     return false;
   }
 }
@@ -1080,7 +1168,7 @@ async function loadFromFirestore() {
 function queueCloudSave() {
   if (!firebaseReady || !currentUserId || !firestoreDb) return;
   timerManager.setTimer('cloudSave', () => {
-    saveToFirestore().catch(err => console.warn('Cloud save failed:', err));
+    saveToFirestore().catch(err => logger.warn('Cloud save failed:', err));
   }, 800);
 }
 
@@ -1107,7 +1195,7 @@ async function saveToFirestore() {
     if (statusEl) statusEl.textContent = 'Autosaved (cloud)';
     return true;
   } catch (err) {
-    console.warn('Cloud save failed:', err);
+    logger.warn('Cloud save failed:', err);
     // Update status to show cloud save is unavailable
     const statusEl = document.getElementById('autosaveStatus');
     if (statusEl) {
@@ -1290,7 +1378,11 @@ function applyDropCapStyle(style) {
   const firstChar = text.charAt(0);
   const rest = text.substring(1);
   const styleClass = style === 'classic' ? 'drop-cap-classic' : 'drop-cap-' + style;
-  targetElement.innerHTML = `<span class="drop-cap-span ${styleClass}" style="--drop-cap-size:${size};">${firstChar}</span>${rest}`;
+  const escapedFirstChar = escapeHtml(firstChar);
+  const escapedRest = escapeHtml(rest);
+  // Use safeHTML for dynamic content to prevent XSS
+  const dropCapHTML = `<span class="drop-cap-span ${styleClass}" style="--drop-cap-size:${size};">${escapedFirstChar}</span>${escapedRest}`;
+  safeHTML.safeSetHTML(targetElement, dropCapHTML, false);
 
   showToast('Drop cap style applied');
   editor.focus();
@@ -1325,7 +1417,7 @@ function setDropCapSize(size) {
 let chapters = [];
 let currentChapterIndex = 0;
 let metadata = {};
-let autosaveInterval;
+let autosaveInterval = null;
 let sessionStartTime = Date.now();
 let sessionStartWords = 0;
 let speechSynthesis = window.speechSynthesis;
@@ -1382,6 +1474,30 @@ const domCache = {
     this.toolbarPanel = null;
   }
 };
+
+// Cleanup function for timers and event listeners
+function cleanupOnUnload() {
+  if (autosaveInterval) {
+    clearInterval(autosaveInterval);
+    autosaveInterval = null;
+  }
+  if (spellCheckTimeout) {
+    clearTimeout(spellCheckTimeout);
+    spellCheckTimeout = null;
+  }
+  if (typeof navigatorTimeout !== 'undefined' && navigatorTimeout) {
+    clearTimeout(navigatorTimeout);
+    navigatorTimeout = null;
+  }
+  // Clear all timers from TimerManager
+  if (window.timerManager) {
+    window.timerManager.clearAll();
+  }
+}
+
+// Register cleanup on page unload
+window.addEventListener('beforeunload', cleanupOnUnload);
+window.addEventListener('pagehide', cleanupOnUnload);
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async function() {
@@ -1518,15 +1634,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // Sidebar Toggle
 function toggleSidebar() {
-  console.log('toggleSidebar() called');
+      logger.log('toggleSidebar() called');
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) {
-    console.error('Sidebar element not found');
+    logger.error('Sidebar element not found');
     return;
   }
-  console.log('Toggling sidebar, current classes:', sidebar.className);
+  logger.log('Toggling sidebar, current classes:', sidebar.className);
   sidebar.classList.toggle('collapsed');
-  console.log('After toggle, classes:', sidebar.className, 'Has collapsed?', sidebar.classList.contains('collapsed'));
+  logger.log('After toggle, classes:', sidebar.className, 'Has collapsed?', sidebar.classList.contains('collapsed'));
   showToast(sidebar.classList.contains('collapsed') ? 'Sidebar hidden' : 'Sidebar shown');
 }
 
@@ -1633,7 +1749,7 @@ function toggleDarkMode() {
 function switchTemplate() {
   const templateSelector = document.getElementById('templateSelector');
   if (!templateSelector) {
-    console.error('Template selector not found');
+    logger.error('Template selector not found');
     return;
   }
   
@@ -1641,7 +1757,7 @@ function switchTemplate() {
   const editor = domCache.getEditor();
   
   if (!editor) {
-    console.error('Editor not found');
+    logger.error('Editor not found');
     showToast('Editor not found', 'error');
     return;
   }
@@ -1909,7 +2025,7 @@ function formatText(command, value = null) {
           });
         }, 10);
       } catch (e) {
-        console.error('List command error:', e);
+        logger.error('List command error:', e);
         showToast('Could not create list. Please try selecting text first.', 'error');
       }
     } else {
@@ -2331,7 +2447,7 @@ function applyLetterSpacing(value) {
       }
     }
   } catch (error) {
-    console.error('Letter spacing error:', error);
+    logger.error('Letter spacing error:', error);
     showToast('Could not apply letter spacing', 'error');
   }
   
@@ -3236,7 +3352,7 @@ function insertBeatMarker(label) {
     
     showToast('Beat marker added');
   } catch (e) {
-    console.error('Error inserting beat marker:', e);
+    logger.error('Error inserting beat marker:', e);
     // Fallback: append to end of editor
     try {
       editor.appendChild(markerP);
@@ -3309,18 +3425,18 @@ function insertLink() {
 
 // Insert Screenplay Elements
 function insertScreenplayElement(type) {
-  console.log('insertScreenplayElement called with type:', type);
+  logger.log('insertScreenplayElement called with type:', type);
   
   const editor = domCache.getEditor();
   if (!editor) {
-    console.error('Editor not available');
+    logger.error('Editor not available');
     showToast('Editor not available', 'error');
     return;
   }
   
   // Check if editor is contentEditable
   if (editor.contentEditable !== 'true' && !editor.isContentEditable) {
-    console.error('Editor is not editable');
+    logger.error('Editor is not editable');
     showToast('Editor is not editable', 'error');
     return;
   }
@@ -3384,7 +3500,7 @@ function insertScreenplayElement(type) {
       placeholderText = ''; // Transition doesn't use placeholder
       break;
     default:
-      console.error('Unknown screenplay element type:', type);
+      logger.error('Unknown screenplay element type:', type);
       showToast('Unknown screenplay element type: ' + type, 'error');
       return;
   }
@@ -3392,7 +3508,7 @@ function insertScreenplayElement(type) {
   // Check if HTML was generated
   if (!html || html.trim() === '') {
     showToast('Invalid screenplay element type', 'error');
-    console.error('No HTML generated for type:', type);
+    logger.error('No HTML generated for type:', type);
     return;
   }
   
@@ -3413,7 +3529,7 @@ function insertScreenplayElement(type) {
     }, 0);
   } catch (e) {
     showToast('Failed to insert screenplay element', 'error');
-    console.error('Error inserting screenplay element:', e, 'Type:', type, 'HTML:', html);
+    logger.error('Error inserting screenplay element:', e, 'Type:', type, 'HTML:', html);
     return;
   }
   
@@ -3507,7 +3623,8 @@ function toggleSceneNumbering() {
       if (isEnabled) {
         // Add scene number if not already present
         if (!text.match(/^\d+\./)) {
-          scene.innerHTML = `<strong>${sceneNumber}.</strong> ${text}`;
+          const escapedText = escapeHtml(text); // Escape user content
+          scene.innerHTML = `<strong>${sceneNumber}.</strong> ${escapedText}`;
           sceneNumber++;
         }
       } else {
@@ -3592,7 +3709,7 @@ function insertPlaywritingElement(type) {
     showToast('Playwriting element inserted');
   } catch (e) {
     showToast('Failed to insert playwriting element', 'error');
-    console.error('Error inserting playwriting element:', e);
+    logger.error('Error inserting playwriting element:', e);
   }
 }
 
@@ -3705,8 +3822,22 @@ function confirmLinkInsert() {
     showToast('Editor not available', 'error');
     return;
   }
-
+  
   const rawUrl = document.getElementById('linkUrl').value.trim();
+  
+  // Validate URL
+  if (!rawUrl) {
+    showToast('Please enter a URL', 'error');
+    return;
+  }
+  
+  if (!validateUrl(rawUrl) && !rawUrl.startsWith('mailto:') && !rawUrl.startsWith('tel:')) {
+    // Allow mailto: and tel: protocols
+    if (!rawUrl.startsWith('mailto:') && !rawUrl.startsWith('tel:')) {
+      showToast('Please enter a valid URL (must start with http://, https://, mailto:, or tel:)', 'error');
+      return;
+    }
+  }
   const text = document.getElementById('linkText').value;
   const newTab = document.getElementById('linkNewTab').checked;
   
@@ -3827,7 +3958,7 @@ function loadWordDefinition() {
 }
 
 async function showDefinitionAndSynonyms(findText) {
-  console.log(' FUNCTION CALLED! showDefinitionAndSynonyms with:', findText);
+  logger.log(' FUNCTION CALLED! showDefinitionAndSynonyms with:', findText);
   
   if (!findText || findText.length === 0 || findText.includes(' ')) {
     const defSection = document.getElementById('definitionSection');
@@ -3959,7 +4090,7 @@ async function showDefinitionAndSynonyms(findText) {
       sugDiv.innerHTML = '<span style="color: #999; font-size: 12px;">No synonyms found</span>';
     }
   } catch (error) {
-    console.log('Error in dictionary function:', error);
+    logger.log('Error in dictionary function:', error);
     // Handle different error types
     const defSection = document.getElementById('definitionSection');
     const defDiv = document.getElementById('wordDefinition');
@@ -4337,7 +4468,7 @@ function startReading() {
   };
   
   currentUtterance.onerror = function(e) {
-    console.error('Speech error:', e);
+    logger.error('Speech error:', e);
     isReadingAloud = false;
     showToast('Reading error', 'error');
   };
@@ -4608,7 +4739,7 @@ function addInlineComment() {
   commentModal.innerHTML = `
     <h3 style="margin-bottom: 12px; color: #333; font-size: 18px;"><i class="fas fa-comment-dots"></i> Add Comment / Beta Note</h3>
     <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Selected text:</p>
-    <blockquote style="font-size: 13px; margin: 0 0 15px 0; padding-left: 10px; border-left: 3px solid #8B4513; color: #444;">${selectedText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</blockquote>
+    <blockquote style="font-size: 13px; margin: 0 0 15px 0; padding-left: 10px; border-left: 3px solid #8B4513; color: #444;">${escapeHtml(selectedText)}</blockquote>
     <div style="margin-bottom: 15px;">
       <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px;">Comment / Note</label>
       <textarea id="inlineCommentText" style="width: 100%; min-height: 90px; border-radius: 6px; border: 1px solid #dee2e6; padding: 8px; font-size: 13px; font-family: inherit;" placeholder="Enter your comment or beta note here"></textarea>
@@ -4705,7 +4836,7 @@ function viewCommentPopup(commentSpan) {
   popup.innerHTML = `
     <h3 style="margin-bottom: 12px; color: #333; font-size: 18px;"><i class="fas fa-comment-dots"></i> Comment</h3>
     <div style="margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #ff9800;">
-      <p style="margin: 0; font-size: 14px; color: #444;">${commentText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+      <p style="margin: 0; font-size: 14px; color: #444;">${escapeHtml(commentText)}</p>
     </div>
     <div style="display: flex; gap: 8px;">
       <button id="editCommentBtn" style="flex: 1; padding: 10px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Edit</button>
@@ -4884,43 +5015,7 @@ function updateStatsInternal() {
       chapters[currentChapterIndex].wordCount = wordCount;
     }
   } catch (error) {
-    console.error('Error updating stats:', error);
-  }
-}
-
-function updateGoals() {
-  const editor = domCache.getEditor();
-  if (!editor) return;
-  
-  const text = editor.innerText.trim();
-  const wordCount = text.length > 0 ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
-  
-  // Get daily goal
-  const dailyGoalInput = document.getElementById('dailyGoal');
-  const dailyGoal = dailyGoalInput ? parseInt(dailyGoalInput.value) || 1000 : 1000;
-  
-  // Update goal display elements
-  const todaysWordsEl = document.getElementById('todaysWords');
-  const goalTargetEl = document.getElementById('goalTarget');
-  const goalProgressEl = document.getElementById('goalProgress');
-  const goalProgressBar = document.getElementById('goalProgressBar');
-  
-  if (todaysWordsEl) todaysWordsEl.textContent = wordCount;
-  if (goalTargetEl) goalTargetEl.textContent = dailyGoal;
-  
-  // Calculate progress percentage
-  const progressPercent = Math.min(Math.round((wordCount / dailyGoal) * 100), 100);
-  
-  if (goalProgressEl) goalProgressEl.textContent = progressPercent + '%';
-  
-  // Update progress bar width and color
-  if (goalProgressBar) {
-    goalProgressBar.style.width = progressPercent + '%';
-    if (progressPercent >= 100) {
-      goalProgressBar.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
-    } else {
-      goalProgressBar.style.background = 'linear-gradient(90deg, #8B4513 0%, #A0522D 100%)';
-    }
+    logger.error('Error updating stats:', error);
   }
 }
 
@@ -5347,7 +5442,7 @@ function showProofreadingResults(originalText, storedRange, options) {
       }
     })
     .catch(error => {
-      console.error('Proofreading error:', error);
+      logger.error('Proofreading error:', error);
       loadingContainer.style.display = 'none';
       suggestionArea.style.display = 'block';
       statusMsg.style.display = 'block';
@@ -5403,7 +5498,7 @@ async function callLanguageToolAPI(text, options = {}) {
     
     return correctedText;
   } catch (error) {
-    console.error('LanguageTool error:', error);
+    logger.error('LanguageTool error:', error);
     throw error;
   }
 }
@@ -5414,7 +5509,7 @@ async function callMistralAPI(text, options = {}) {
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
   if (isLocalhost) {
-    console.log('Running locally - using enhanced local AI corrections');
+    logger.log('Running locally - using enhanced local AI corrections');
     
     // Simulate API delay for realistic feel
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -5442,7 +5537,7 @@ async function callMistralAPI(text, options = {}) {
         .replace(/\bisn't\b/g, 'is not');
     }
     
-    console.log('Local AI corrections applied');
+    logger.log('Local AI corrections applied');
     return correctedText;
   }
   
@@ -5466,7 +5561,7 @@ async function callMistralAPI(text, options = {}) {
       
       // Check if API key not configured or other errors
       if (response.status === 501 || response.status === 404 || response.status === 500) {
-        console.warn('Netlify function not available. Using local fallback.');
+        logger.warn('Netlify function not available. Using local fallback.');
         showToast('AI function not available. Using local fallback.', 'warning');
         
         // Use enhanced local corrections as fallback
@@ -5479,7 +5574,7 @@ async function callMistralAPI(text, options = {}) {
     const data = await response.json();
     return data.improvedText || text;
   } catch (error) {
-    console.error('Mistral API error:', error);
+    logger.error('Mistral API error:', error);
     throw error;
   }
 }
@@ -5503,12 +5598,6 @@ function openAISettingsModal() {
       </select>
     </div>
     
-    <!-- Mistral Section -->
-    <div id="mistralSection" style="margin-bottom: 20px; padding: 12px; background: #e8f5e9; border-radius: 6px; border-left: 4px solid #28a745; display: ${engine === 'mistral' ? 'block' : 'none'};">
-      <h4 style="font-size: 14px; margin-bottom: 8px; color: #1b5e20;"><i class="fas fa-lock"></i> Mistral API (Secure)</h4>
-      <p style="font-size: 12px; color: #2e7d32; margin: 0; line-height: 1.5;">✓ Your API key is stored securely on the server, not in your browser.<br/>✓ All requests are processed server-side for maximum security.</p>
-    </div>
-    
     <!-- LanguageTool Section -->
     <div id="languagetoolSection" style="margin-bottom: 20px; padding: 12px; background: #f8f9fa; border-radius: 6px; display: ${engine === 'languagetool' ? 'block' : 'none'};">
       <h4 style="font-size: 14px; margin-bottom: 8px; color: #555;">LanguageTool Server URL</h4>
@@ -5526,9 +5615,6 @@ function openAISettingsModal() {
       </div>
     </div>
     
-    <div style="padding: 12px; background: #fff3cd; border-radius: 6px; margin-bottom: 16px; border-left: 4px solid #ffc107;">
-      <p style="font-size: 12px; color: #856404; margin: 0; line-height: 1.5;"><strong>💡 Security Note:</strong> Your Mistral API key is now stored securely on the server. The browser never sees your key, making this much safer from exposure.</p>
-    </div>
     <button data-action="closeAISettingsModal" style="width: 100%; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
       Close
     </button>
@@ -5542,13 +5628,17 @@ function openAISettingsModal() {
   document.body.appendChild(backdrop);
   document.body.appendChild(modal);
   window.aiSettingsModal = modal;
+  
+  // Mistral API key is now stored in Netlify environment variables
+  // No client-side storage needed
 }
 
 function updateEngineDisplay() {
   const engine = document.getElementById('engineSelect').value;
-  document.getElementById('mistralSection').style.display = engine === 'mistral' ? 'block' : 'none';
-  document.getElementById('perplexitySection').style.display = engine === 'perplexity' ? 'block' : 'none';
-  document.getElementById('languagetoolSection').style.display = engine === 'languagetool' ? 'block' : 'none';
+  const perplexitySection = document.getElementById('perplexitySection');
+  const languagetoolSection = document.getElementById('languagetoolSection');
+  if (perplexitySection) perplexitySection.style.display = engine === 'perplexity' ? 'block' : 'none';
+  if (languagetoolSection) languagetoolSection.style.display = engine === 'languagetool' ? 'block' : 'none';
 }
 
 function closeAISettingsModal() {
@@ -5559,51 +5649,9 @@ function closeAISettingsModal() {
   window.aiSettingsModal = null;
 }
 
-// Mistral Key Management
-function toggleMistralKeyVisibility() {
-  const input = document.getElementById('mistralKeyInput');
-  const icon = document.getElementById('mistralEyeIcon');
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.className = 'fas fa-eye-slash';
-  } else {
-    input.type = 'password';
-    icon.className = 'fas fa-eye';
-  }
-}
-
-function saveMistralKey() {
-  try {
-    const input = document.getElementById('mistralKeyInput');
-    const key = input.value.trim();
-    if (key) {
-      // Use secure storage for API key
-      secureStorage.setSecureItem('mistral_api_key', key);
-      secureStorage.setItem('proofreading_engine', 'mistral');
-      showToast('Mistral API key saved securely');
-      closeAISettingsModal();
-    } else {
-      showToast('Please enter a valid Mistral API key', 'error');
-    }
-  } catch (error) {
-    console.error('Error saving Mistral key:', error);
-    showToast('Failed to save API key', 'error');
-  }
-}
-
-function removeMistralKey() {
-  try {
-    if (confirm('Remove Mistral API key?')) {
-      secureStorage.removeSecureItem('mistral_api_key');
-      secureStorage.removeItem('proofreading_engine');
-      showToast('Mistral key removed securely');
-      closeAISettingsModal();
-    }
-  } catch (error) {
-    console.error('Error removing Mistral key:', error);
-    showToast('Failed to remove API key', 'error');
-  }
-}
+// Mistral API key is now stored in Netlify environment variables
+// No client-side storage or management functions needed
+// The key is accessed server-side via the Netlify function
 
 
 // LanguageTool Management
@@ -5712,105 +5760,7 @@ function generateProofreadingSuggestion(text) {
   return s;
 }
 
-function updateWordFrequency(words) {
-  const container = document.getElementById('wordFrequency');
-  if (!container) return;
-
-  // Basic stop-word list to keep results meaningful
-  const stopWords = new Set([
-    'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from',
-    'is','was','are','were','be','been','being','this','that','these','those','into',
-    'as','it','its','he','she','they','them','his','her','their','you','your','i'
-  ]);
-
-  const freq = {};
-  words.forEach(w => {
-    const clean = w.toLowerCase().replace(/[^a-z']/g, '');
-    if (!clean || clean.length < 4 || stopWords.has(clean)) return;
-    freq[clean] = (freq[clean] || 0) + 1;
-  });
-
-  const entries = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-  container.innerHTML = '';
-  if (!entries.length) {
-    container.innerHTML = '<p style="font-size: 12px; color: #6c757d;">Not enough text yet for frequency analysis.</p>';
-    return;
-  }
-
-  entries.forEach(([word, count]) => {
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.justifyContent = 'space-between';
-    row.style.fontSize = '13px';
-    row.style.padding = '4px 0';
-
-    const label = document.createElement('span');
-    label.textContent = word;
-    label.style.color = '#555';
-
-    const value = document.createElement('span');
-    value.textContent = count;
-    value.style.fontWeight = '600';
-    value.style.color = '#8B4513';
-
-    row.appendChild(label);
-    row.appendChild(value);
-    container.appendChild(row);
-  });
-}
-
-function updateOutlineView() {
-  const container = document.getElementById('outlineView');
-  if (!container) return;
-
-  const editor = domCache.getEditor();
-  const headings = editor.querySelectorAll('h1, h2, h3, h4, h5, h6');
-
-  container.innerHTML = '';
-
-  if (!headings.length) {
-    container.innerHTML = '<p style="font-size: 12px; color: #6c757d;">No headings yet. Use H1–H6 to build an outline.</p>';
-    return;
-  }
-
-  headings.forEach((h, index) => {
-    const level = parseInt(h.tagName.substring(1), 10) || 1;
-    // Ensure each heading has an ID for scrolling
-    if (!h.id) {
-      h.id = 'outline-heading-' + index;
-    }
-
-    const item = document.createElement('div');
-    item.className = 'outline-item';
-    item.style.marginLeft = (level - 1) * 10 + 'px';
-    item.textContent = h.textContent || `Heading ${index + 1}`;
-
-    const small = document.createElement('small');
-    small.textContent = `H${level}`;
-    item.appendChild(small);
-
-    item.onclick = () => {
-      const target = document.getElementById(h.id);
-      if (target && typeof target.scrollIntoView === 'function') {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    };
-
-    container.appendChild(item);
-  });
-}
-
-function countSyllables(text) {
-  // Simplified syllable counting
-  const words = text.toLowerCase().match(/\b[a-z]+\b/g) || [];
-  let count = 0;
-  words.forEach(word => {
-    const vowels = word.match(/[aeiouy]+/g);
-    count += vowels ? vowels.length : 1;
-  });
-  return count;
-}
+// Duplicate functions removed - using versions defined earlier (lines 4915-5012)
 
 // Chapter Management
 function addChapter() {
@@ -5888,7 +5838,19 @@ function confirmAddChapter() {
   const input = document.getElementById('chapterTitleInput');
   if (!input) return;
   
-  const title = input.value.trim() || `Chapter ${chapters.length + 1}`;
+  let title = input.value.trim();
+  
+  // Validate title if provided, otherwise use default
+  if (title && !validateChapterName(title)) {
+    showToast('Invalid chapter title. Use alphanumeric characters and common punctuation (max 200 characters)', 'error');
+    input.focus();
+    return;
+  }
+  
+  // Use default if empty
+  if (!title) {
+    title = `Chapter ${chapters.length + 1}`;
+  }
   
   chapters.push({
     title: title,
@@ -5915,9 +5877,11 @@ function renderChapterList() {
   chapters.forEach((chapter, index) => {
     const item = document.createElement('div');
     item.className = 'chapter-item' + (index === currentChapterIndex ? ' active' : '');
+    // Sanitize chapter title to prevent XSS
+    const safeChapterTitle = escapeHtml(chapter.title);
     item.innerHTML = `
       <div>
-        <div>${chapter.title}</div>
+        <div>${safeChapterTitle}</div>
         <small style="opacity: 0.7;">${chapter.wordCount} words</small>
       </div>
       <i class="fas fa-trash" data-action="deleteChapter" data-index="${index}" style="cursor: pointer;"></i>
@@ -5963,10 +5927,13 @@ function renderChapterList() {
       }
       
       card.style.cssText = cardStyle;
+      // Sanitize chapter title and beat to prevent XSS
+      const safeCardTitle = escapeHtml(chapter.title);
+      const safeBeat = chapter.beat ? escapeHtml(chapter.beat) : '';
       card.innerHTML = `
         ${actLabel}
-        <div class="story-card-title">${chapter.title}</div>
-        ${beatBadge}
+        <div class="story-card-title">${safeCardTitle}</div>
+        ${beatBadge ? `<div class="story-card-beat">${safeBeat}</div>` : ''}
         <div class="story-card-words">${chapter.wordCount || 0} words</div>
       `;
       
@@ -6011,7 +5978,7 @@ function loadChapter(index) {
 function loadCurrentChapter() {
   const editor = domCache.getEditor();
   if (chapters[currentChapterIndex]) {
-    editor.innerHTML = chapters[currentChapterIndex].content || 'Start writing your chapter here...';
+    safeHTML.safeSetHTML(editor, chapters[currentChapterIndex].content || 'Start writing your chapter here...', true);
   } else {
     editor.innerHTML = 'Start writing your manuscript here...';
   }
@@ -6027,8 +5994,10 @@ function loadCurrentChapter() {
 function deleteChapter(index) {
   const confirmDiv = document.createElement('div');
   confirmDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 2000; text-align: center;';
+  // Sanitize chapter title to prevent XSS
+  const safeTitle = escapeHtml(chapters[index].title);
   confirmDiv.innerHTML = `
-    <h3 style="margin-bottom: 20px; color: #333;">Delete "${chapters[index].title}"?</h3>
+    <h3 style="margin-bottom: 20px; color: #333;">Delete "${safeTitle}"?</h3>
     <p style="margin-bottom: 20px; color: #666;">This action cannot be undone.</p>
     <button onclick="confirmDeleteChapter(${index}, true)" style="padding: 10px 20px; margin: 5px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Yes, Delete</button>
     <button onclick="confirmDeleteChapter(${index}, false)" style="padding: 10px 20px; margin: 5px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancel</button>
@@ -6784,7 +6753,7 @@ function addProject() {
         
         const editor = document.getElementById('editor');
         if (editor) {
-          editor.innerHTML = htmlContent || 'No content found in DOCX file';
+          safeHTML.safeSetHTML(editor, htmlContent || 'No content found in DOCX file', true);
         }
         
         updateStats();
@@ -6801,7 +6770,7 @@ function addProject() {
         document.body.removeChild(fileInput);
         return;
       } catch (error) {
-        console.error('Error importing DOCX:', error);
+        logger.error('Error importing DOCX:', error);
         showToast('Error importing DOCX file. Please ensure it is a valid Word document.');
         document.body.removeChild(fileInput);
         return;
@@ -6821,7 +6790,7 @@ function addProject() {
           if (data.content) {
             const editor = document.getElementById('editor');
             if (editor) {
-              editor.innerHTML = data.content;
+              safeHTML.safeSetHTML(editor, data.content, true);
             }
           }
           if (data.chapters) {
@@ -6855,7 +6824,8 @@ function addProject() {
             // Convert plain text to HTML paragraphs
             const paragraphs = content.split('\n\n').filter(p => p.trim());
             const htmlContent = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-            editor.innerHTML = htmlContent || content.replace(/\n/g, '<br>');
+            const safeContent = htmlContent || content.replace(/\n/g, '<br>');
+            safeHTML.safeSetHTML(editor, safeContent, true);
           }
           showToast('Text project imported successfully');
         } else {
@@ -6873,7 +6843,7 @@ function addProject() {
           settingsSection.style.display = 'none';
         }
       } catch (error) {
-        console.error('Error importing project:', error);
+        logger.error('Error importing project:', error);
         showToast('Error importing project. Please check the file format.');
       }
     };
@@ -6996,7 +6966,7 @@ function saveMetadata() {
     closeModal('metadataModal');
     showToast('Metadata saved');
   } catch (error) {
-    console.error('Error saving metadata:', error);
+    logger.error('Error saving metadata:', error);
     showToast('Failed to save metadata. Please try again.', 'error');
   }
 }
@@ -7636,7 +7606,7 @@ function exportPDF(content) {
 
     showToast('Print dialog opened. Save as PDF when you print.');
   } catch (error) {
-    console.error('PDF export error:', error);
+    logger.error('PDF export error:', error);
     showToast('Could not open print dialog', 'error');
   }
 }
@@ -7693,7 +7663,7 @@ function printPreview() {
     content = header + content;
     exportPDF(content);
   } catch (error) {
-    console.error('Print preview error:', error);
+    logger.error('Print preview error:', error);
     showToast('Could not open print preview', 'error');
   }
 }
@@ -7805,7 +7775,7 @@ function confirmPrint() {
     exportPDF(fullContent);
     closeModal('printModal');
   } catch (error) {
-    console.error('Print error:', error);
+    logger.error('Print error:', error);
     showToast('Could not open print dialog', 'error');
   }
 }
@@ -7934,7 +7904,7 @@ async function exportEPUB(content, filename) {
     downloadBlob(blob, `${sanitizeFilename(filename)}.epub`, 'application/epub+zip');
     showToast('EPUB exported');
   } catch (error) {
-    console.error('EPUB export error:', error);
+    logger.error('EPUB export error:', error);
     showToast('EPUB export failed: ' + error.message, 'error');
   }
 }
@@ -7948,7 +7918,7 @@ async function exportMOBI(content, filename) {
     downloadBlob(blob, `${sanitizeFilename(filename)}-kindle.epub`, 'application/epub+zip');
     showToast('Kindle-ready EPUB exported (send to Kindle or Calibre to convert).');
   } catch (error) {
-    console.error('MOBI export error:', error);
+    logger.error('MOBI export error:', error);
     showToast('MOBI/Kindle export failed: ' + error.message, 'error');
   }
 }
@@ -8394,9 +8364,9 @@ function downloadFile(content, filename, mimeType) {
     setTimeout(() => {
       try {
         const win = window.open(url, '_blank');
-        if (!win) console.warn('Fallback window.open blocked');
+        if (!win) logger.warn('Fallback window.open blocked');
       } catch (e) {
-        console.warn('Fallback window.open failed', e);
+        logger.warn('Fallback window.open failed', e);
       }
     }, 300);
 
@@ -8404,7 +8374,7 @@ function downloadFile(content, filename, mimeType) {
     setTimeout(() => URL.revokeObjectURL(url), 3000);
     showToast('Downloading ' + filename);
   } catch (error) {
-    console.error('Download error:', error);
+    logger.error('Download error:', error);
     try {
       // Last-resort fallback: data URL in new tab
       const dataUrl = 'data:' + (mimeType || 'application/octet-stream') + ';charset=utf-8,' + encodeURIComponent(content);
@@ -8412,7 +8382,7 @@ function downloadFile(content, filename, mimeType) {
       if (!win) throw error;
       showToast('Download opened in new tab');
     } catch (fallbackError) {
-      console.error('Fallback download error:', fallbackError);
+      logger.error('Fallback download error:', fallbackError);
       showToast('Download failed: ' + fallbackError.message, 'error');
     }
   }
@@ -8439,7 +8409,7 @@ function downloadBlob(blob, filename, mimeType) {
     setTimeout(() => URL.revokeObjectURL(url), 3000);
     showToast('Downloading ' + filename);
   } catch (error) {
-    console.error('Download blob error:', error);
+    logger.error('Download blob error:', error);
     showToast('Download failed: ' + error.message, 'error');
   }
 }
@@ -8642,7 +8612,7 @@ function saveToStorage() {
     if (statusEl) statusEl.textContent = 'Autosaved';
     queueCloudSave();
   } catch (e) {
-    console.error('Save failed:', e);
+    logger.error('Save failed:', e);
     showToast('Save failed - storage full', 'error');
     showAutosaveIndicator('error');
   }
@@ -8664,7 +8634,7 @@ function loadFromStorage() {
           template: ch.template || 'novel'
         }));
       } catch (parseError) {
-        console.error('Failed to parse chapters:', parseError);
+        logger.error('Failed to parse chapters:', parseError);
         chapters = [{
           title: 'Chapter 1',
           content: '',
@@ -8688,7 +8658,7 @@ function loadFromStorage() {
       try {
         metadata = JSON.parse(savedMetadata);
       } catch (parseError) {
-        console.error('Failed to parse metadata:', parseError);
+        logger.error('Failed to parse metadata:', parseError);
         metadata = {};
       }
     }
@@ -8704,7 +8674,7 @@ function loadFromStorage() {
       document.body.classList.add('dark-mode');
     }
   } catch (e) {
-    console.error('Load failed:', e);
+    logger.error('Load failed:', e);
     // Initialize with default values on error
     chapters = [{
       title: 'Chapter 1',
@@ -8730,6 +8700,10 @@ function saveAll() {
 
 let autosaveCounter = 0;
 function startAutosave() {
+  // Clear existing interval if any
+  if (autosaveInterval) {
+    clearInterval(autosaveInterval);
+  }
   autosaveInterval = setInterval(() => {
     if (chapters[currentChapterIndex]) {
       showAutosaveIndicator('saving');
@@ -8895,7 +8869,7 @@ function initializeVersionHistory() {
     try {
       versionHistory = JSON.parse(saved);
     } catch (e) {
-      console.error('Failed to parse version history:', e);
+      logger.error('Failed to parse version history:', e);
       versionHistory = [];
     }
   }
@@ -9285,7 +9259,7 @@ function loadSharedDocument(shareId) {
     
     showToast('Shared document loaded in read-only mode', 'success');
   } catch (e) {
-    console.error('Failed to load shared document:', e);
+    logger.error('Failed to load shared document:', e);
     showToast('Failed to load shared document', 'error');
   }
 }
@@ -10018,7 +9992,7 @@ function setupCentralizedEventHandlers() {
     
     // Debug logging for version history
     if (action === 'openVersionHistory') {
-      console.log('History button clicked! Action:', action, 'Target:', target);
+      logger.log('History button clicked! Action:', action, 'Target:', target);
     }
     
     // Route to appropriate handler
@@ -10033,19 +10007,19 @@ function setupCentralizedEventHandlers() {
       case 'toggleDarkMode': toggleDarkMode(); break;
       case 'toggleFocusMode': toggleFocusMode(); break;
       case 'openVersionHistory': 
-        console.log('Opening version history modal...');
+        logger.log('Opening version history modal...');
         openVersionHistoryModal(); 
         break;
       case 'closeVersionHistoryModal': 
-        console.log('Closing version history modal...');
+        logger.log('Closing version history modal...');
         closeVersionHistoryModal(); 
         break;
       case 'closeSaveAsModal': 
-        console.log('Closing save as modal...');
+        logger.log('Closing save as modal...');
         closeSaveAsModal(); 
         break;
       case 'closeKeyboardShortcutsModal': 
-        console.log('Closing keyboard shortcuts modal...');
+        logger.log('Closing keyboard shortcuts modal...');
         closeKeyboardShortcutsModal(); 
         break;
       case 'openExport': openExportModal(); break;
@@ -10090,6 +10064,10 @@ function setupCentralizedEventHandlers() {
       case 'formatHeading': if (param) formatHeading(param); break;
       case 'openMetadata': openMetadataModal(); break;
       case 'openAISettings': openAISettingsModal(); break;
+      case 'closeAISettingsModal': closeAISettingsModal(); break;
+      case 'updateEngineDisplay': updateEngineDisplay(); break;
+      case 'saveLanguageToolUrl': saveLanguageToolUrl(); break;
+      case 'testLanguageTool': testLanguageTool(); break;
       case 'formatText': if (param) formatText(param); break;
       case 'transformCase': if (param) transformCase(param); break;
       case 'insertBeatMarker': if (param) insertBeatMarker(param); break;
@@ -10370,7 +10348,7 @@ function openModal(modalId) {
 }
 
 // Toast notification function
-function showToast(message, type = 'info') {
+function showToast(message, type = 'success') {
   const existingToast = document.querySelector('.toast-notification');
   if (existingToast) {
     existingToast.remove();
@@ -10379,8 +10357,8 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = 'toast-notification';
   
-  let backgroundColor = '#333';
-  let icon = 'fas fa-info-circle';
+  let backgroundColor = '#28a745'; // Green (changed from grey #333)
+  let icon = 'fas fa-check-circle';
   
   if (type === 'success') {
     backgroundColor = '#28a745';
@@ -10391,6 +10369,9 @@ function showToast(message, type = 'info') {
   } else if (type === 'warning') {
     backgroundColor = '#ffc107';
     icon = 'fas fa-exclamation-triangle';
+  } else if (type === 'info') {
+    backgroundColor = '#28a745'; // Green for info (changed from grey #333)
+    icon = 'fas fa-info-circle';
   }
   
   toast.style.cssText = `
@@ -10411,7 +10392,8 @@ function showToast(message, type = 'info') {
     animation: slideInRight 0.3s ease-out;
   `;
   
-  toast.innerHTML = `<i class="${icon}"></i><span>${message}</span>`;
+  const escapedMessage = escapeHtml(message); // Sanitize message to prevent XSS
+  toast.innerHTML = `<i class="${icon}"></i><span>${escapedMessage}</span>`;
   document.body.appendChild(toast);
   
   setTimeout(() => {
@@ -10447,16 +10429,16 @@ if (!document.getElementById('toast-animations')) {
 
 // Build scene navigation from document headings
 function refreshSceneNavigator() {
-  console.log('refreshSceneNavigator called!');
+  logger.log('refreshSceneNavigator called!');
   
   const editor = document.getElementById('editor');
   const navigator = document.getElementById('sceneNavigator');
   
-  console.log('Editor:', editor);
-  console.log('Navigator:', navigator);
+  logger.log('Editor:', editor);
+  logger.log('Navigator:', navigator);
   
   if (!editor || !navigator) {
-    console.error('Scene Navigator: Editor or navigator element not found');
+    logger.error('Scene Navigator: Editor or navigator element not found');
     return;
   }
   
@@ -10464,7 +10446,7 @@ function refreshSceneNavigator() {
   const templateSelector = document.getElementById('templateSelector');
   const currentTemplate = templateSelector ? templateSelector.value : 'novel';
   
-  console.log('Current template mode:', currentTemplate);
+  logger.log('Current template mode:', currentTemplate);
   
   let items = [];
   
@@ -10472,14 +10454,14 @@ function refreshSceneNavigator() {
     // For screenplay: find INT./EXT. scene headings
     const allParagraphs = editor.querySelectorAll('p, div, h1, h2, h3');
     
-    console.log('Total paragraphs found:', allParagraphs.length);
+    logger.log('Total paragraphs found:', allParagraphs.length);
     
     allParagraphs.forEach((para, index) => {
       const text = para.textContent.trim();
       // Match INT. or EXT. at start of line (case insensitive)
       // Also check for screenplay-scene class
       if (/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|INT |EXT )/i.test(text) || para.classList.contains('screenplay-scene')) {
-        console.log('Found scene:', text.substring(0, 50));
+        logger.log('Found scene:', text.substring(0, 50));
         items.push({
           element: para,
           text: text,
@@ -10506,7 +10488,7 @@ function refreshSceneNavigator() {
     });
   }
   
-  console.log('Scene Navigator: Found', items.length, 'items in', currentTemplate, 'mode');
+  logger.log('Scene Navigator: Found', items.length, 'items in', currentTemplate, 'mode');
   
   if (items.length === 0) {
     const emptyMessage = currentTemplate === 'screenplay' 
@@ -10549,8 +10531,10 @@ function refreshSceneNavigator() {
       color = '#333';
     }
     
+    const escapedText = escapeHtml(item.text);
+    const escapedId = escapeHtml(item.id);
     html += `
-      <div onclick="jumpToScene('${item.id}')" 
+      <div onclick="jumpToScene('${escapedId}')" 
            style="padding: 8px 8px 8px ${indentLevel + 8}px; 
                   margin-bottom: 2px; 
                   cursor: pointer; 
@@ -10565,7 +10549,7 @@ function refreshSceneNavigator() {
            onmouseover="this.style.background='rgba(139,69,19,0.15)'; this.style.transform='translateX(2px)';"
            onmouseout="this.style.background='transparent'; this.style.transform='translateX(0)';">
         <i class="fas ${icon}" style="color: #8B4513; font-size: 11px; min-width: 14px;"></i>
-        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.text}</span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapedText}</span>
       </div>
     `;
   });
@@ -10581,7 +10565,7 @@ function refreshSceneNavigator() {
 function jumpToScene(headingId) {
   const heading = document.getElementById(headingId);
   if (!heading) {
-    console.error('Heading not found:', headingId);
+    logger.error('Heading not found:', headingId);
     return;
   }
   
@@ -10634,8 +10618,8 @@ function createNewProject() {
   const templateSelect = document.getElementById('newProjectTemplate');
   const projectName = nameInput.value.trim();
   
-  if (!projectName) {
-    showToast('Please enter a project name', 'error');
+  if (!validateProjectName(projectName)) {
+    showToast('Please enter a valid project name (max 100 characters, alphanumeric, spaces, hyphens, and underscores only)', 'error');
     nameInput.focus();
     return;
   }
@@ -10688,7 +10672,7 @@ function renderProjectsList() {
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
           <i class="fas ${templateIcon}" style="font-size: 24px; color: #8B4513;"></i>
           <div style="flex: 1;">
-            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${project.name}</div>
+            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${escapeHtml(project.name)}</div>
             <div style="font-size: 12px; color: #666;">
               <i class="fas fa-file-alt"></i> ${project.template.charAt(0).toUpperCase() + project.template.slice(1)} 
               <span style="margin-left: 12px;"><i class="fas fa-calendar"></i> Created ${new Date(project.created).toLocaleDateString()}</span>
@@ -10785,7 +10769,7 @@ function loadProjectData(projectId) {
       
       // Load editor content
       if (editor) {
-        editor.innerHTML = data.content || '';
+        safeHTML.safeSetHTML(editor, data.content || '', true);
       }
       
       // Load template
@@ -10847,7 +10831,7 @@ function loadProjectData(projectId) {
       }
       
     } catch (error) {
-      console.error('Error loading project data:', error);
+      logger.error('Error loading project data:', error);
       showToast('Error loading project data', 'error');
     }
   } else {
@@ -10950,8 +10934,8 @@ function importProject() {
         try {
           importData = JSON.parse(result);
         } catch (parseError) {
-          console.error('JSON parse error:', parseError);
-          console.error('File content:', result.substring(0, 200));
+          logger.error('JSON parse error:', parseError);
+          logger.error('File content:', result.substring(0, 200));
           showToast('Invalid JSON format in project file', 'error');
           return;
         }
@@ -10988,7 +10972,7 @@ function importProject() {
         renderProjectsList();
         
       } catch (error) {
-        console.error('Import error:', error);
+        logger.error('Import error:', error);
         showToast('Error importing project file', 'error');
       }
     };
@@ -11009,11 +10993,11 @@ function openTemplatesLibrary() {
 function insertTemplate(templateType) {
   const editor = document.getElementById('editor');
   if (!editor) {
-    console.error('Editor not found!');
+    logger.error('Editor not found!');
     return;
   }
   
-  console.log('Inserting template:', templateType);
+  logger.log('Inserting template:', templateType);
   
   let content = '';
   
@@ -11383,7 +11367,7 @@ function insertTemplate(templateType) {
       content = '<p>Template not found.</p>';
   }
   
-  console.log('Template content length:', content.length);
+  logger.log('Template content length:', content.length);
   
   // Insert content into editor
   editor.focus();
@@ -11401,7 +11385,7 @@ function insertTemplate(templateType) {
     safeHTML.setHTML(editor, editor.innerHTML + content);
   }
   
-  console.log('Template inserted successfully');
+  logger.log('Template inserted successfully');
   
   // Close modal and update stats
   closeModal('templatesLibraryModal');
@@ -11442,9 +11426,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Auto-refresh Scene Navigator when editor content changes
   const editor = document.getElementById('editor');
   if (editor) {
-    let navigatorTimeout;
+    let navigatorTimeout = null;
     editor.addEventListener('input', function() {
-      clearTimeout(navigatorTimeout);
+      if (navigatorTimeout) {
+        clearTimeout(navigatorTimeout);
+      }
       navigatorTimeout = setTimeout(refreshSceneNavigator, 1500);
     });
   }
@@ -11477,8 +11463,114 @@ document.addEventListener('DOMContentLoaded', function() {
     const action = target.dataset.action;
     const param = target.dataset.param;
     
-    if (action === 'switchSidebarTab' && param) {
-      switchSidebarTab(param);
+    // Handle all data-action events
+    switch(action) {
+      case 'switchSidebarTab':
+        if (param) switchSidebarTab(param);
+        break;
+      case 'openTemplatesLibrary':
+        if (typeof openTemplatesLibrary === 'function') openTemplatesLibrary();
+        break;
+      case 'refreshSceneNavigator':
+        if (typeof refreshSceneNavigator === 'function') refreshSceneNavigator();
+        break;
+      case 'openModal':
+        if (param && typeof openModal === 'function') openModal(param);
+        break;
+      case 'addCharacter':
+        if (typeof addCharacter === 'function') addCharacter();
+        break;
+      case 'addQuickLink':
+        if (typeof addQuickLink === 'function') addQuickLink();
+        break;
+      case 'zoomIn':
+        if (typeof zoomIn === 'function') zoomIn();
+        break;
+      case 'zoomOut':
+        if (typeof zoomOut === 'function') zoomOut();
+        break;
+      case 'toggleBottomTemplateBar':
+        if (typeof toggleBottomTemplateBar === 'function') toggleBottomTemplateBar();
+        break;
+      case 'insertScreenplayElement':
+        if (param && typeof insertScreenplayElement === 'function') insertScreenplayElement(param);
+        break;
+      case 'insertPlaywritingElement':
+        if (param && typeof insertPlaywritingElement === 'function') insertPlaywritingElement(param);
+        break;
+      case 'saveResearchNotes':
+        if (typeof saveResearchNotes === 'function') saveResearchNotes();
+        break;
+      case 'applyExportPreset':
+        if (param && typeof applyExportPreset === 'function') applyExportPreset(param);
+        break;
+      case 'insertTemplate':
+        if (param && typeof insertTemplate === 'function') insertTemplate(param);
+        break;
+      case 'importProject':
+        if (typeof importProject === 'function') importProject();
+        break;
+      case 'createNewProject':
+        if (typeof createNewProject === 'function') createNewProject();
+        break;
+      case 'closeModal':
+        if (param && typeof closeModal === 'function') closeModal(param);
+        break;
+      case 'findTextInput':
+        // Handled by keypress event
+        break;
+      case 'openExternalLink':
+        if (param) {
+          try {
+            window.open(param, '_blank', 'noopener,noreferrer');
+          } catch (e) {
+            logger.warn('Failed to open external link:', e);
+          }
+        }
+        break;
+      default:
+        // Let other handlers process it
+        break;
+    }
+  });
+  
+  // Handle input events with data-action
+  document.addEventListener('input', function(e) {
+    const target = e.target;
+    if (!target || !target.hasAttribute('data-action')) return;
+    
+    const action = target.dataset.action;
+    if (action === 'saveResearchNotes' && typeof saveResearchNotes === 'function') {
+      saveResearchNotes();
+    }
+  });
+  
+  // Handle keypress events with data-action
+  document.addEventListener('keypress', function(e) {
+    const target = e.target;
+    if (!target || !target.hasAttribute('data-action')) return;
+    
+    const action = target.dataset.action;
+    const keypress = target.dataset.keypress;
+    
+    if (keypress && e.key === keypress) {
+      switch(action) {
+        case 'addCharacter':
+          if (typeof addCharacter === 'function') addCharacter();
+          break;
+        case 'addQuickLink':
+          if (typeof addQuickLink === 'function') addQuickLink();
+          break;
+      }
+    }
+    
+    // Handle find text input
+    if (action === 'findTextInput' && e.key === 'Enter') {
+      if (typeof findNext === 'function') {
+        findNext();
+      } else if (typeof loadWordDefinition === 'function') {
+        loadWordDefinition();
+      }
     }
   });
 });
@@ -11520,7 +11612,7 @@ function switchSidebarTab(tab) {
 function saveResearchNotes() {
   const notes = document.getElementById('researchNotes').value;
   localStorage.setItem('researchNotes', notes);
-  console.log('Research notes saved');
+  logger.log('Research notes saved');
 }
 
 // Add a character to tracker
@@ -11528,7 +11620,8 @@ function addCharacter() {
   const input = document.getElementById('newCharacterName');
   const name = input.value.trim();
   
-  if (!name) {
+  // Validate character name
+  if (!name || name.length === 0) {
     // Create custom alert dialog
     const backdrop = document.createElement('div');
     backdrop.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
@@ -11568,10 +11661,22 @@ function addCharacter() {
     return;
   }
   
+  // Validate name length
+  if (name.length > 200) {
+    showToast('Character name is too long (max 200 characters)', 'error');
+    return;
+  }
+  
   // Get existing characters
   let characters = JSON.parse(localStorage.getItem('characters') || '[]');
   
-  // Add new character
+  // Check for duplicates
+  if (characters.some(char => char.name.toLowerCase() === name.toLowerCase())) {
+    showToast('Character with this name already exists', 'error');
+    return;
+  }
+  
+  // Add new character (name is sanitized by escapeHtml when displayed)
   characters.push({
     name: name,
     id: Date.now()
@@ -11580,7 +11685,7 @@ function addCharacter() {
   localStorage.setItem('characters', JSON.stringify(characters));
   input.value = '';
   renderCharacterList();
-  console.log('Character added:', name);
+  logger.log('Character added:', name);
 }
 
 // Render the character list
@@ -11601,15 +11706,19 @@ function renderCharacterList() {
     return;
   }
   
-  characterList.innerHTML = characters.map(char => `
+  // Sanitize character names to prevent XSS
+  characterList.innerHTML = characters.map(char => {
+    const safeName = escapeHtml(char.name);
+    return `
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
-      <span style="font-size: 13px;">${char.name}</span>
+      <span style="font-size: 13px;">${safeName}</span>
       <button onclick="deleteCharacter(${char.id})" 
               style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">
         <i class="fas fa-trash"></i>
       </button>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // Delete a character
@@ -11657,7 +11766,7 @@ function deleteCharacter(id) {
     localStorage.setItem('characters', JSON.stringify(characters));
     renderCharacterList();
     backdrop.remove();
-    console.log('Character deleted:', id);
+    logger.log('Character deleted:', id);
   };
   
   // Close on backdrop click
@@ -11711,8 +11820,8 @@ function addQuickLink() {
     return;
   }
   
-  // Basic URL validation
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+  // Enhanced URL validation using validateUrl function
+  if (!validateUrl(url)) {
     // Create custom alert dialog
     const backdrop = document.createElement('div');
     backdrop.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
@@ -11764,7 +11873,7 @@ function addQuickLink() {
   localStorage.setItem('quickLinks', JSON.stringify(links));
   input.value = '';
   renderQuickLinks();
-  console.log('Quick link added:', url);
+  logger.log('Quick link added:', url);
 }
 
 // Render the quick links list
@@ -11785,11 +11894,14 @@ function renderQuickLinks() {
     return;
   }
   
+  // Sanitize URLs to prevent XSS
   linksList.innerHTML = links.map(link => {
-    const displayUrl = link.url.length > 35 ? link.url.substring(0, 35) + '...' : link.url;
+    // Validate and sanitize URL
+    const safeUrl = sanitizeAttribute(link.url);
+    const displayUrl = safeUrl.length > 35 ? escapeHtml(safeUrl.substring(0, 35) + '...') : escapeHtml(safeUrl);
     return `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
-        <a href="${link.url}" target="_blank" style="flex: 1; font-size: 13px; color: #17a2b8; text-decoration: none;">
+        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="flex: 1; font-size: 13px; color: #17a2b8; text-decoration: none;">
           <i class="fas fa-external-link-alt"></i> ${displayUrl}
         </a>
         <button onclick="deleteQuickLink(${link.id})" 
@@ -11846,7 +11958,7 @@ function deleteQuickLink(id) {
     localStorage.setItem('quickLinks', JSON.stringify(links));
     renderQuickLinks();
     backdrop.remove();
-    console.log('Quick link deleted:', id);
+    logger.log('Quick link deleted:', id);
   };
   
   // Close on backdrop click

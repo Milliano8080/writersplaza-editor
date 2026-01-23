@@ -123,7 +123,7 @@
             <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
               <i class="fas fa-info-circle"></i> Insert pre-written templates
             </div>
-            <button class="add-chapter-btn" onclick="openTemplatesLibrary()" style="background: #8B4513;">
+            <button class="add-chapter-btn" data-action="openTemplatesLibrary" style="background: #8B4513;">
               <i class="fas fa-layer-group"></i> Browse Templates
             </button>
           </div>
@@ -138,7 +138,7 @@
                 Start writing to see navigation
               </div>
             </div>
-            <button class="add-chapter-btn" onclick="refreshSceneNavigator()" style="margin-top: 8px; background: #8B4513;">
+            <button class="add-chapter-btn" data-action="refreshSceneNavigator" style="margin-top: 8px; background: #8B4513;">
               <i class="fas fa-sync"></i> Refresh Navigation
             </button>
           </div>
@@ -152,7 +152,7 @@
             <div style="margin-bottom: 10px; padding: 8px; background: rgba(139,69,19,0.1); border-radius: 6px; font-size: 12px; color: #666;">
               <i class="fas fa-info-circle"></i> Manage multiple writing projects
             </div>
-            <button class="add-chapter-btn" onclick="openModal('projectManagerModal')" style="background: #8B4513;">
+            <button class="add-chapter-btn" data-action="openModal" data-param="projectManagerModal" style="background: #8B4513;">
               <i class="fas fa-folder-open"></i> Open Project Manager
             </button>
           </div>
@@ -324,7 +324,7 @@
             </div>
             <textarea id="researchNotes" placeholder="Your research notes, character details, plot ideas, world-building notes..."
                       style="width: 100%; min-height: 300px; padding: 12px; border: 1px solid #dee2e6; border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.6; resize: vertical;"
-                      oninput="saveResearchNotes()"></textarea>
+                      data-action="saveResearchNotes"></textarea>
             <div style="margin-top: 10px; font-size: 12px; color: #999; text-align: right;">
               <i class="fas fa-save"></i> Auto-saved to browser
             </div>
@@ -344,8 +344,8 @@
             <div style="display: flex; gap: 8px; margin-top: 10px;">
               <input type="text" id="newCharacterName" placeholder="Character name" 
                      style="flex: 1; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px;"
-                     onkeypress="if(event.key==='Enter')addCharacter()">
-              <button onclick="addCharacter()" style="padding: 8px 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                     data-action="addCharacter" data-keypress="Enter">
+              <button data-action="addCharacter" style="padding: 8px 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer;">
                 <i class="fas fa-plus"></i>
               </button>
             </div>
@@ -365,8 +365,8 @@
             <div style="display: flex; gap: 8px; margin-top: 10px;">
               <input type="text" id="newLinkUrl" placeholder="https://..." 
                      style="flex: 1; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px;"
-                     onkeypress="if(event.key==='Enter')addQuickLink()">
-              <button onclick="addQuickLink()" style="padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                     data-action="addQuickLink" data-keypress="Enter">
+              <button data-action="addQuickLink" style="padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">
                 <i class="fas fa-plus"></i>
               </button>
             </div>
@@ -691,23 +691,25 @@
           <div class="stat-item"><i class="fas fa-clock"></i> <span>Read Time:</span> <strong id="readTime">0 min</strong></div>
           <div class="stat-item"><i class="fas fa-save"></i> <span id="autosaveStatus">Autosaved</span></div>
           <div class="stat-item" style="display: flex; align-items: center; gap: 2px;">
-            <button onclick="zoomOut()" title="Zoom Out" style="background: none; border: 1px solid #dee2e6; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 12px;"><i class="fas fa-search-minus"></i></button>
+            <button data-action="zoomOut" title="Zoom Out" style="background: none; border: 1px solid #dee2e6; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 12px;"><i class="fas fa-search-minus"></i></button>
             <span style="min-width: 40px; display: inline-block; text-align: center; font-size: 12px;"><strong id="zoomLevel">100%</strong></span>
-            <button onclick="zoomIn()" title="Zoom In" style="background: none; border: 1px solid #dee2e6; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 12px;"><i class="fas fa-search-plus"></i></button>
+            <button data-action="zoomIn" title="Zoom In" style="background: none; border: 1px solid #dee2e6; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 12px;"><i class="fas fa-search-plus"></i></button>
           </div>
         </div>
 
         <!-- Editor Area -->
         <div class="editor-area" id="editorArea">
-          <div class="page-wrapper" id="pageWrapper" id="main-content" role="main" aria-label="Document pages">
-            <div id="editor" class="editor-page" contenteditable="true" spellcheck="true" role="textbox" aria-label="Document editor" aria-multiline="true">
-              Start writing your manuscript here...
+          <div class="page-wrapper" id="pageWrapper" role="main" aria-label="Document pages">
+            <div id="main-content">
+              <div id="editor" class="editor-page" contenteditable="true" spellcheck="true" role="textbox" aria-label="Document editor" aria-multiline="true">
+                Start writing your manuscript here...
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Bottom Template Bar Toggle Button -->
-        <button class="bottom-bar-toggle" id="bottomBarToggle" onclick="toggleBottomTemplateBar()" title="Show Template Buttons">
+        <button class="bottom-bar-toggle" id="bottomBarToggle" data-action="toggleBottomTemplateBar" title="Show Template Buttons">
           <i class="fas fa-chevron-up"></i>
         </button>
 
@@ -715,22 +717,22 @@
         <div class="bottom-template-bar" id="bottomTemplateBar" style="display: none;">
           <!-- Screenplay Buttons -->
           <div id="bottomScreenplayButtons" style="display: none;">
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('titlepage')" title="Title Page"><i class="fas fa-file-alt"></i> Title Page</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('outline')" title="Scene Outline"><i class="fas fa-list"></i> Outline</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('scene')" title="Scene Heading"><i class="fas fa-video"></i> Scene</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('general')" title="General"><i class="fas fa-align-left"></i> General</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('character')" title="Character"><i class="fas fa-user"></i> Character</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('dialogue')" title="Dialogue"><i class="fas fa-comment"></i> Dialogue</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('parenthetical')" title="Parenthetical"><i class="fas fa-info-circle"></i> Parenthetical</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('action')" title="Action"><i class="fas fa-bolt"></i> Action</button>
-            <button type="button" class="template-bar-btn" onclick="insertScreenplayElement('transition')" title="Transition"><i class="fas fa-arrow-right"></i> Transition</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="titlepage" title="Title Page"><i class="fas fa-file-alt"></i> Title Page</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="outline" title="Scene Outline"><i class="fas fa-list"></i> Outline</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="scene" title="Scene Heading"><i class="fas fa-video"></i> Scene</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="general" title="General"><i class="fas fa-align-left"></i> General</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="character" title="Character"><i class="fas fa-user"></i> Character</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="dialogue" title="Dialogue"><i class="fas fa-comment"></i> Dialogue</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="parenthetical" title="Parenthetical"><i class="fas fa-info-circle"></i> Parenthetical</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="action" title="Action"><i class="fas fa-bolt"></i> Action</button>
+            <button type="button" class="template-bar-btn" data-action="insertScreenplayElement" data-param="transition" title="Transition"><i class="fas fa-arrow-right"></i> Transition</button>
           </div>
           <!-- Playwriting Buttons -->
           <div id="bottomPlaywritingButtons" style="display: none;">
-            <button class="template-bar-btn" onclick="insertPlaywritingElement('act')" title="Act Heading"><i class="fas fa-theater-masks"></i> Act</button>
-            <button class="template-bar-btn" onclick="insertPlaywritingElement('scene')" title="Scene Heading"><i class="fas fa-map-marker-alt"></i> Scene</button>
-            <button class="template-bar-btn" onclick="insertPlaywritingElement('character')" title="Character Tag"><i class="fas fa-user"></i> Character</button>
-            <button class="template-bar-btn" onclick="insertPlaywritingElement('stage')" title="Stage Direction"><i class="fas fa-directions"></i> Stage</button>
+            <button class="template-bar-btn" data-action="insertPlaywritingElement" data-param="act" title="Act Heading"><i class="fas fa-theater-masks"></i> Act</button>
+            <button class="template-bar-btn" data-action="insertPlaywritingElement" data-param="scene" title="Scene Heading"><i class="fas fa-map-marker-alt"></i> Scene</button>
+            <button class="template-bar-btn" data-action="insertPlaywritingElement" data-param="character" title="Character Tag"><i class="fas fa-user"></i> Character</button>
+            <button class="template-bar-btn" data-action="insertPlaywritingElement" data-param="stage" title="Stage Direction"><i class="fas fa-directions"></i> Stage</button>
           </div>
         </div>
       </div>
@@ -797,19 +799,19 @@
         </div>
         <h3 style="margin: 25px 0 15px 0;">Export Presets</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-          <button onclick="applyExportPreset('publisher')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+          <button data-action="applyExportPreset" data-param="publisher" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
             <i class="fas fa-building"></i> Publisher Ready<br>
             <small style="font-size: 11px; opacity: 0.9;">DOCX with metadata</small>
           </button>
-          <button onclick="applyExportPreset('collaboration')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+          <button data-action="applyExportPreset" data-param="collaboration" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
             <i class="fas fa-users"></i> For Collaboration<br>
             <small style="font-size: 11px; opacity: 0.9;">RTF for Google Docs</small>
           </button>
-          <button onclick="applyExportPreset('ebook')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+          <button data-action="applyExportPreset" data-param="ebook" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
             <i class="fas fa-book"></i> E-book Format<br>
             <small style="font-size: 11px; opacity: 0.9;">EPUB format</small>
           </button>
-          <button onclick="applyExportPreset('print')" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
+          <button data-action="applyExportPreset" data-param="print" style="padding: 12px; background: #8B4513; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: left;">
             <i class="fas fa-print"></i> Print Ready<br>
             <small style="font-size: 11px; opacity: 0.9;">PDF format</small>
           </button>
@@ -840,7 +842,7 @@
       <div class="modal-body">
         <div class="form-group">
           <label>Find</label>
-          <input type="text" id="findText" placeholder="Text to find" onkeypress="if(event.key==='Enter')findNext(); else loadWordDefinition()">
+          <input type="text" id="findText" placeholder="Text to find" data-action="findTextInput" data-keypress="Enter">
         </div>
         
         <!-- Definition & Suggestions Section -->
@@ -998,35 +1000,35 @@
       <div class="modal-body">
         <p style="margin-bottom: 20px; color: #666;">Browse and download fonts from popular sources:</p>
         <ul class="export-list">
-          <li onclick="window.open('https://fonts.google.com', '_blank', 'noopener,noreferrer')">
+          <li data-action="openExternalLink" data-param="https://fonts.google.com">
             <i class="fab fa-google"></i>
             <div>
               <strong>Google Fonts</strong>
               <div style="font-size: 12px; opacity: 0.8;">Free, open-source fonts optimized for the web</div>
             </div>
           </li>
-          <li onclick="window.open('https://www.dafont.com', '_blank', 'noopener,noreferrer')">
+          <li data-action="openExternalLink" data-param="https://www.dafont.com">
             <i class="fas fa-font"></i>
             <div>
               <strong>DaFont</strong>
               <div style="font-size: 12px; opacity: 0.8;">Archive of freely downloadable fonts</div>
             </div>
           </li>
-          <li onclick="window.open('https://www.fontsquirrel.com', '_blank', 'noopener,noreferrer')">
+          <li data-action="openExternalLink" data-param="https://www.fontsquirrel.com">
             <i class="fas fa-font"></i>
             <div>
               <strong>Font Squirrel</strong>
               <div style="font-size: 12px; opacity: 0.8;">100% free commercial fonts</div>
             </div>
           </li>
-          <li onclick="window.open('https://fonts.adobe.com', '_blank', 'noopener,noreferrer')">
+          <li data-action="openExternalLink" data-param="https://fonts.adobe.com">
             <i class="fab fa-adobe"></i>
             <div>
               <strong>Adobe Fonts</strong>
               <div style="font-size: 12px; opacity: 0.8;">Thousands of fonts from Adobe and partners</div>
             </div>
           </li>
-          <li onclick="window.open('https://www.1001fonts.com', '_blank', 'noopener,noreferrer')">
+          <li data-action="openExternalLink" data-param="https://www.1001fonts.com">
             <i class="fas fa-font"></i>
             <div>
               <strong>1001 Fonts</strong>
@@ -1086,12 +1088,20 @@
     // Set your Firebase config here or before this script as window.firebaseConfig
     // SECURITY NOTE: For production, move these to environment variables or server-side config
     // Current implementation exposes API keys in client-side code
-    window.firebaseConfig = window.firebaseConfig || {
-      apiKey: "AIzaSyBpJiM_p7DdnuH9F-Fzai38zhxkZqpVQj8",
-      authDomain: "writersplaza-f48f8.firebaseapp.com",
-      projectId: "writersplaza-f48f8"
-    };
-    // TODO: Consider using Firebase Admin SDK on server-side instead
+    // IMPORTANT: Configure Firebase security rules in Firebase Console to restrict access
+    // This API key is public by design for client-side Firebase SDK usage
+    // Ensure proper Firestore security rules are set: https://firebase.google.com/docs/firestore/security/get-started
+    window.firebaseConfig = window.firebaseConfig || (function() {
+      // Allow override via environment variable or external config
+      if (typeof window.FIREBASE_CONFIG_OVERRIDE !== 'undefined') {
+        return window.FIREBASE_CONFIG_OVERRIDE;
+      }
+      return {
+        apiKey: "AIzaSyBpJiM_p7DdnuH9F-Fzai38zhxkZqpVQj8",
+        authDomain: "writersplaza-f48f8.firebaseapp.com",
+        projectId: "writersplaza-f48f8"
+      };
+    })();
   </script>
   <script>
     // Apple Pages Style Font Size Control
@@ -1235,64 +1245,64 @@
     <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
         <h2><i class="fas fa-layer-group"></i> Templates Library</h2>
-        <button class="modal-close" onclick="closeModal('templatesLibraryModal')">×</button>
+        <button class="modal-close" data-action="closeModal" data-param="templatesLibraryModal">×</button>
       </div>
       <div class="modal-body">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
           
           <!-- Novel Templates -->
-          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('hero-journey')" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
+          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="hero-journey" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
             <h3 style="color: #8B4513; margin-bottom: 10px;"><i class="fas fa-dragon"></i> Hero's Journey</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">The classic storytelling framework for novels</p>
             <span style="font-size: 11px; background: #8B4513; color: white; padding: 4px 8px; border-radius: 4px;">Novel</span>
           </div>
 
-          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('three-act')" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
+          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="three-act" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
             <h3 style="color: #8B4513; margin-bottom: 10px;"><i class="fas fa-film"></i> Three-Act Structure</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Setup, Confrontation, Resolution outline</p>
             <span style="font-size: 11px; background: #8B4513; color: white; padding: 4px 8px; border-radius: 4px;">Novel/Screenplay</span>
           </div>
 
-          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('character-profile')" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
+          <div style="border: 2px solid #8B4513; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="character-profile" onmouseover="this.style.borderColor='#A0522D'; this.style.background='rgba(139,69,19,0.05)'" onmouseout="this.style.borderColor='#8B4513'; this.style.background='white'">
             <h3 style="color: #8B4513; margin-bottom: 10px;"><i class="fas fa-user-circle"></i> Character Profile</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Comprehensive character development sheet</p>
             <span style="font-size: 11px; background: #8B4513; color: white; padding: 4px 8px; border-radius: 4px;">Planning</span>
           </div>
 
           <!-- Screenplay Templates -->
-          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('save-the-cat')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
+          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="save-the-cat" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
             <h3 style="color: #28a745; margin-bottom: 10px;"><i class="fas fa-cat"></i> Save the Cat</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">15 beat screenplay structure</p>
             <span style="font-size: 11px; background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Screenplay</span>
           </div>
 
-          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('scene-outline')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
+          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="scene-outline" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
             <h3 style="color: #28a745; margin-bottom: 10px;"><i class="fas fa-list-ol"></i> Scene Outline</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Scene-by-scene breakdown template</p>
             <span style="font-size: 11px; background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Screenplay</span>
           </div>
 
-          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('screenplay-beat')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
+          <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="screenplay-beat" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(40,167,69,0.05)'" onmouseout="this.style.borderColor='#28a745'; this.style.background='white'">
             <h3 style="color: #28a745; margin-bottom: 10px;"><i class="fas fa-heartbeat"></i> Beat Sheet</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Page-by-page plot beats</p>
             <span style="font-size: 11px; background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Screenplay</span>
           </div>
 
           <!-- Playwriting Templates -->
-          <div style="border: 2px solid #6f42c1; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('play-structure')" onmouseover="this.style.borderColor='#9561e2'; this.style.background='rgba(111,66,193,0.05)'" onmouseout="this.style.borderColor='#6f42c1'; this.style.background='white'">
+          <div style="border: 2px solid #6f42c1; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="play-structure" onmouseover="this.style.borderColor='#9561e2'; this.style.background='rgba(111,66,193,0.05)'" onmouseout="this.style.borderColor='#6f42c1'; this.style.background='white'">
             <h3 style="color: #6f42c1; margin-bottom: 10px;"><i class="fas fa-theater-masks"></i> Play Structure</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Acts and scenes framework</p>
             <span style="font-size: 11px; background: #6f42c1; color: white; padding: 4px 8px; border-radius: 4px;">Playwriting</span>
           </div>
 
-          <div style="border: 2px solid #6f42c1; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('monologue')" onmouseover="this.style.borderColor='#9561e2'; this.style.background='rgba(111,66,193,0.05)'" onmouseout="this.style.borderColor='#6f42c1'; this.style.background='white'">
+          <div style="border: 2px solid #6f42c1; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="monologue" onmouseover="this.style.borderColor='#9561e2'; this.style.background='rgba(111,66,193,0.05)'" onmouseout="this.style.borderColor='#6f42c1'; this.style.background='white'">
             <h3 style="color: #6f42c1; margin-bottom: 10px;"><i class="fas fa-microphone"></i> Monologue Template</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Structured monologue format</p>
             <span style="font-size: 11px; background: #6f42c1; color: white; padding: 4px 8px; border-radius: 4px;">Playwriting</span>
           </div>
 
           <!-- Planning Templates -->
-          <div style="border: 2px solid #17a2b8; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="insertTemplate('world-building')" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(23,162,184,0.05)'" onmouseout="this.style.borderColor='#17a2b8'; this.style.background='white'">
+          <div style="border: 2px solid #17a2b8; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" data-action="insertTemplate" data-param="world-building" onmouseover="this.style.borderColor='#20c997'; this.style.background='rgba(23,162,184,0.05)'" onmouseout="this.style.borderColor='#17a2b8'; this.style.background='white'">
             <h3 style="color: #17a2b8; margin-bottom: 10px;"><i class="fas fa-globe"></i> World Building</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Create detailed fictional worlds</p>
             <span style="font-size: 11px; background: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px;">Planning</span>
@@ -1309,10 +1319,10 @@
       <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
         <h2 style="margin: 0;"><i class="fas fa-folder-open"></i> Project Manager</h2>
         <div style="display: flex; align-items: center; gap: 10px;">
-          <button onclick="importProject()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+          <button data-action="importProject" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
             <i class="fas fa-upload"></i> Import Project
           </button>
-          <button class="modal-close" onclick="closeModal('projectManagerModal')">×</button>
+          <button class="modal-close" data-action="closeModal" data-param="projectManagerModal">×</button>
         </div>
       </div>
       <div class="modal-body">
@@ -1331,7 +1341,7 @@
               <option value="screenplay">Screenplay</option>
               <option value="playwriting">Playwriting</option>
             </select>
-            <button onclick="createNewProject()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap;">
+            <button data-action="createNewProject" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap;">
               <i class="fas fa-plus"></i> Create
             </button>
           </div>
