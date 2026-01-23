@@ -8996,7 +8996,7 @@ function openVersionHistoryModal() {
   
   safeHTML.setHTML(modal, versionsHTML + `
     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center;">
-      <button onclick="closeVersionHistoryModal()" style="padding: 10px 24px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Close</button>
+      <button data-action="closeVersionHistoryModal" style="padding: 10px 24px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Close</button>
     </div>
   `);
   
@@ -9937,6 +9937,10 @@ function setupCentralizedEventHandlers() {
       case 'openVersionHistory': 
         console.log('Opening version history modal...');
         openVersionHistoryModal(); 
+        break;
+      case 'closeVersionHistoryModal': 
+        console.log('Closing version history modal...');
+        closeVersionHistoryModal(); 
         break;
       case 'openExport': openExportModal(); break;
       case 'saveAll': saveAll(); break;
